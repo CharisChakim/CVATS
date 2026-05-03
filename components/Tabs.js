@@ -5,7 +5,7 @@ const Tabs = ({ activeTab }) => {
     const tabs = Object.keys(ResumeFields);
 
     return (
-        <div className="flex w-full gap-2 overflow-y-auto md:gap-3">
+        <div className="flex w-full gap-2 overflow-x-auto pb-2 md:gap-3">
             {tabs.map(tab => (
                 <Link
                     key={tab}

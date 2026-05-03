@@ -10,6 +10,8 @@ const defaultResume = {
     certificates: [],
     languages: [],
 
+    template: 'classic',
+    onePage: false,
     saved: false,
 };
 
@@ -54,11 +56,38 @@ const resumeSlice = createSlice({
             state.saved = false;
         },
 
+        setFullResume: (state, action) => {
+            return {
+                ...state,
+                ...action.payload,
+                saved: false,
+            };
+        },
+
+        setTemplate: (state, action) => {
+            state.template = action.payload;
+            state.saved = false;
+        },
+
+        setOnePage: (state, action) => {
+            state.onePage = action.payload;
+            state.saved = false;
+        },
+
         saveResume: state => {
             state.saved = true;
         },
     },
 });
 
-export const { updateResumeValue, addNewIndex, deleteIndex, saveResume, moveIndex } = resumeSlice.actions;
+export const {
+    updateResumeValue,
+    addNewIndex,
+    deleteIndex,
+    saveResume,
+    moveIndex,
+    setFullResume,
+    setTemplate,
+    setOnePage,
+} = resumeSlice.actions;
 export default resumeSlice.reducer;

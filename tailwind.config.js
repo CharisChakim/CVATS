@@ -15,6 +15,15 @@ module.exports = {
                 primary: { ...colors.teal },
                 gray: { ...colors.zinc },
             },
+            keyframes: {
+                shimmer: {
+                    '0%':   { transform: 'translateX(0)' },
+                    '100%': { transform: 'translateX(400%)' },
+                },
+            },
+            animation: {
+                shimmer: 'shimmer 2s linear infinite',
+            },
         },
     },
 };

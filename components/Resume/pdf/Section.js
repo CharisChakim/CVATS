@@ -1,21 +1,21 @@
 import { StyleSheet, Text, View } from '@react-pdf/renderer';
 
-const Section = ({ title, style, children }) => {
+const Section = ({ title, children, compact }) => {
     const styles = StyleSheet.create({
         section_title: {
             textTransform: 'uppercase',
             color: '#333',
-            fontSize: 13,
+            fontSize: compact ? 11 : 13,
         },
 
         section_title_underline: {
             height: 1,
-            margin: '2px 0px 4px 0px',
+            margin: compact ? '1px 0px 2px 0px' : '2px 0px 4px 0px',
             backgroundColor: '#888',
         },
         section_end: {
-            height: 2,
-            margin: '10px 0px',
+            height: compact ? 1 : 2,
+            margin: compact ? '5px 0px' : '10px 0px',
             backgroundColor: '#eee',
         },
     });

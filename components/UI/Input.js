@@ -3,50 +3,165 @@
 import { twMerge } from 'tailwind-merge';
 import { sentenceCase } from 'change-case';
 import ContentEditable from 'react-contenteditable';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { HiSparkles } from 'react-icons/hi2';
+import { CgSpinner } from 'react-icons/cg';
+import { IoClose } from 'react-icons/io5';
 
-const Input = ({ label, name, type, placeholder, options, span, value, ...props }) => {
-    const inputClassName = `block w-full rounded-md border border-gray-600 bg-gray-700/75 p-2 text-sm text-gray-100 shadow-md shadow-gray-800 outline-none focus:border-2 focus:border-primary-500 focus:bg-gray-700 md:text-base 2xl:p-2.5`;
+const inputClassName =
+    'block w-full rounded-md border border-gray-600 bg-gray-700/75 p-2 text-sm text-gray-100 shadow-md shadow-gray-800 outline-none focus:border-2 focus:border-primary-500 focus:bg-gray-700 md:text-base 2xl:p-2.5';
 
+const RefineButton = ({ kind, value, onRefined }) => {
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState('');
+    const text = (value || '').toString().trim();
+    const disabled = busy || text.length === 0;
+
+    const click = async () => {
+        if (disabled) return;
+        setError('');
+        setBusy(true);
+        try {
+            const res = await fetch('/api/refine', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kind, text }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to refine');
+            onRefined(data.refined);
+        } catch (err) {
+            setError(err.message);
+            setTimeout(() => setError(''), 4000);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div className="mt-1 flex items-center justify-end gap-2">
+            {error && <span className="text-xs text-red-400">{error}</span>}
+            <button
+                type="button"
+                onClick={click}
+                disabled={disabled}
+                title={text.length === 0 ? 'Write something first to refine' : 'Refine with AI'}
+                className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-primary-500 to-blue-500 px-2.5 py-1 text-xs font-medium text-white shadow-md transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-none disabled:bg-gray-700 disabled:text-gray-400"
+            >
+                {busy ? <CgSpinner className="animate-spin text-sm" /> : <HiSparkles className="text-sm" />}
+                <span>{busy ? 'Refining...' : 'Refine with AI'}</span>
+            </button>
+        </div>
+    );
+};
+
+const TagsInput = ({ name, value, onChange, max = 20, placeholder }) => {
+    const [draft, setDraft] = useState('');
+    const tags = Array.isArray(value) ? value : [];
+
+    const commit = raw => {
+        const next = [...tags];
+        raw
+            .split(/[,\n;]/)
+            .map(s => s.trim())
+            .filter(Boolean)
+            .forEach(s => {
+                if (next.length >= max) return;
+                if (next.some(t => t.toLowerCase() === s.toLowerCase())) return;
+                next.push(s);
+            });
+        if (next.length !== tags.length) {
+            onChange({ target: { name, value: next } });
+        }
+        setDraft('');
+    };
+
+    const remove = i => {
+        const next = tags.filter((_, idx) => idx !== i);
+        onChange({ target: { name, value: next } });
+    };
+
+    const onKeyDown = e => {
+        if (e.key === 'Enter' || e.key === ',' || e.key === ';') {
+            e.preventDefault();
+            if (draft.trim()) commit(draft);
+        } else if (e.key === 'Backspace' && draft === '' && tags.length > 0) {
+            remove(tags.length - 1);
+        }
+    };
+
+    const onPaste = e => {
+        const txt = e.clipboardData.getData('text');
+        if (/[,;\n]/.test(txt)) {
+            e.preventDefault();
+            commit(txt);
+        }
+    };
+
+    const atMax = tags.length >= max;
+
+    return (
+        <div>
+            <div
+                className={twMerge(
+                    inputClassName,
+                    'flex min-h-[2.6rem] flex-wrap items-center gap-1.5 py-1.5 focus-within:border-primary-500',
+                )}
+            >
+                {tags.map((tag, i) => (
+                    <span
+                        key={`${tag}-${i}`}
+                        className="inline-flex items-center gap-1 rounded-md bg-primary-500/20 px-2 py-0.5 text-xs text-primary-200"
+                    >
+                        {tag}
+                        <button
+                            type="button"
+                            onClick={() => remove(i)}
+                            aria-label={`Remove ${tag}`}
+                            className="text-primary-200/80 hover:text-white"
+                        >
+                            <IoClose className="text-sm" />
+                        </button>
+                    </span>
+                ))}
+                <input
+                    type="text"
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    onKeyDown={onKeyDown}
+                    onPaste={onPaste}
+                    onBlur={() => draft.trim() && commit(draft)}
+                    placeholder={atMax ? `Max ${max} skills` : placeholder || 'Type a skill, then press Enter'}
+                    disabled={atMax}
+                    className="min-w-[8rem] flex-1 bg-transparent text-sm text-gray-100 outline-none placeholder:text-gray-500 disabled:cursor-not-allowed"
+                />
+            </div>
+            <p className="mt-1 text-xs text-gray-400">
+                {tags.length}/{max} skills · press Enter or comma to add
+            </p>
+        </div>
+    );
+};
+
+const Input = ({ label, name, type, placeholder, options, span, value, aiRefine, ...props }) => {
     const inputRef = useRef(null);
 
+    const triggerChange = newValue => props.onChange?.({ target: { name, value: newValue } });
+
     const InputEl = () => {
-        // if (type === 'textarea' && props.multipoints) {
-        //     return (
-        //         <div
-        //             contentEditable={true}
-        //             role="textbox"
-        //             className={twMerge(inputClassName, 'min-h-56 whitespace-pre-wrap text-sm md:min-h-40 md:text-sm')}
-        //             {...props}
-        //             // onInput={e => {
-        //             //     const text = e.target.innerText;
-        //             //     console.log(text);
-        //             //     props.onChange({ target: { name, value: text } });
-
-        //             // }}
-
-        //             // onKeyDown={e => {console.log('key down')}}
-        //         >
-        //             <ul className="space-y-2 list-disc">
-        //                 {value?.split('\n')?.map((line, index) => (
-        //                     <li
-        //                         key={index}
-        //                         className={
-        //                             "relative ml-[10px] leading-[1.35em] before:absolute before:left-[-10px] before:content-['•']"
-        //                         }
-        //                     >
-        //                         {line}
-        //                     </li>
-        //                 ))}
-        //             </ul>
-        //         </div>
-        //     );
-        // }
+        if (type === 'tags') {
+            return (
+                <TagsInput
+                    name={name}
+                    value={value}
+                    onChange={props.onChange}
+                    max={props.max ?? 20}
+                    placeholder={placeholder}
+                />
+            );
+        }
 
         if (type === 'textarea' && props.multipoints) {
-            // <ul className='space-y-1.5 list-disc pl-5'></ul>
-            // <li className="relative ml-[10px] leading-[1.35em] before:absolute before:left-[-10px] before:content-['•']"></li>;
-
             const html = `
                 <ul class="space-y-1.5 list-disc pl-4 md:pl-5">
                     ${value
@@ -91,7 +206,7 @@ const Input = ({ label, name, type, placeholder, options, span, value, ...props 
             );
         }
 
-        if (type == 'select') {
+        if (type === 'select') {
             return (
                 <select
                     id={name}
@@ -110,7 +225,7 @@ const Input = ({ label, name, type, placeholder, options, span, value, ...props 
             );
         }
 
-        if (type == 'color') {
+        if (type === 'color') {
             return (
                 <input
                     type={'color'}
@@ -128,7 +243,6 @@ const Input = ({ label, name, type, placeholder, options, span, value, ...props 
                 type={type ?? 'text'}
                 name={name}
                 id={name}
-                // className={inputClassName}
                 className={inputClassName}
                 placeholder={placeholder || `Enter ${label}`}
                 defaultValue={type === 'file' ? undefined : props.defaultValue}
@@ -147,6 +261,10 @@ const Input = ({ label, name, type, placeholder, options, span, value, ...props 
             )}
 
             {InputEl()}
+
+            {aiRefine && (
+                <RefineButton kind={aiRefine} value={value} onRefined={triggerChange} />
+            )}
         </div>
     );
 };
