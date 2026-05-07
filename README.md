@@ -78,6 +78,12 @@
 
 ---
 
+## 🙏 Credits
+
+Proyek ini terinspirasi dari [Resumave](https://github.com/devxprite/resumave) oleh [@devxprite](https://github.com/devxprite). Terima kasih atas fondasi yang luar biasa!
+
+---
+
 ## 📄 Lisensi
 
 MIT License — bebas digunakan dan dimodifikasi.
