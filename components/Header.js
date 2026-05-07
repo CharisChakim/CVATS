@@ -1,17 +1,17 @@
 import Link from 'next/link';
-import { FaHome } from 'react-icons/fa';
+import ThemeToggle from './ThemeToggle';
 
 const Header = () => {
     return (
-        <header className="mx-auto flex max-w-screen-xl items-center justify-between px-3 py-3 2xl:max-w-screen-2xl">
-            <Link
-                href="/"
-                aria-label="Home"
-                className="flex items-center gap-2 rounded-md bg-gray-700 px-3 py-1.5 text-sm text-gray-100 transition hover:bg-gray-600 md:text-base"
-            >
-                <FaHome />
-                <span>Home</span>
+        <header className="mx-auto flex max-w-screen-xl items-center justify-between px-4 py-3 2xl:max-w-screen-2xl">
+            <Link href="/" aria-label="CVATS Home" className="flex items-center gap-2.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.svg" alt="" width={34} height={34} className="rounded-lg" />
+                <span className="font-black text-xl tracking-tight bg-gradient-to-r from-blue-500 to-primary-500 bg-clip-text text-transparent">
+                    CVATS
+                </span>
             </Link>
+            <ThemeToggle />
         </header>
     );
 };

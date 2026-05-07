@@ -1,72 +1,83 @@
-<!-- ## Resumave -->
+<div align="center">
+  <img src="./public/logo.svg" width="64" height="64" alt="CVATS logo" />
+  <h1>CVATS</h1>
+  <p><strong>Buat CV profesional, gratis dan aman.</strong></p>
+  <p>
+    AI-powered resume builder — tanpa biaya, tanpa akun, tanpa menyimpan data apapun.
+  </p>
+  <p>
+    <a href="https://cvats.vercel.app/">🚀 Coba Sekarang</a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/devXprite/resumave/issues/new">Laporkan Bug</a>
+  </p>
+</div>
 
-<!-- Resumave is an ATS-friendly resume maker designed to simplify the process of creating professional resumes without the hassle of login or sign-up. With Resumave, users can easily input their details, generate a well-formatted resume, and export it in A4 PDF format. -->
+---
 
-<h1 align="center">Resumave</h1>
-<h3 align="center">An ATS-friendly resume maker</h3>
+## ✨ Fitur Utama
 
-<p align="center">
- <a href="https://resumave.vercel.app/">View Demo</a>
-    ·
-    <a href="https://github.com/devXprite/resumave/issues/new?assignees=&labels=bug&template=bug_report.md&title=">Report Bug</a>
-</p>
-<br/>
+| Fitur | Keterangan |
+|---|---|
+| **100% Gratis** | Semua fitur tersedia tanpa biaya apapun |
+| **Tanpa Akun** | Tidak perlu daftar atau login |
+| **Data Aman** | Data hanya tersimpan di browser kamu — tidak dikirim ke server |
+| **AI Upload CV** | Upload PDF resume lama, AI otomatis mengisi semua field |
+| **AI Refine** | Perbaiki summary, pengalaman, dan proyek dengan satu klik |
+| **ATS-Friendly** | Format CV yang lolos sistem rekrutmen otomatis (ATS) |
+| **2 Template** | Classic (tradisional) dan Modern (kontemporer) |
+| **Compact Mode** | Satu klik untuk memadatkan CV agar muat satu halaman |
+| **Skills sebagai Tag** | Input skill satu per satu, tampil rapi seperti badge |
+| **Dark / Light Mode** | Tema gelap dan terang, preferensi tersimpan otomatis |
+| **Ekspor PDF** | Unduh CV dalam format A4 PDF siap kirim |
 
+---
 
-<p>Resumave is an ATS-friendly resume maker designed to simplify the process of creating professional resumes without the hassle of login or sign-up. With Resumave, users can easily input their details, generate a well-formatted resume, and export it in A4 PDF format. </p>
+## 🛠 Teknologi
 
+- **Next.js 14** — App Router, dynamic imports, SSR-safe rendering
+- **Tailwind CSS** — Utility-first, dark mode support
+- **Redux Toolkit** — State management
+- **@react-pdf/renderer** — Generate PDF dengan font Carlito (setara Calibri)
+- **react-pdf** — Preview PDF langsung di browser
+- **OpenRouter API** — Fitur AI via model NVIDIA Nemotron
 
-## Features
+---
 
-- **ATS-Friendly:** Ensures compatibility with Applicant Tracking Systems (ATS) commonly used by recruiters.
-- **User-Friendly Interface:** simple and intuitive interface for easy navigation and data input.
-- **No Login Required:** Users can access all features without the need for registration or authentication.
-- **PDF Export:** Generate resumes in A4 PDF format for easy printing and sharing.
-- **Persistent Data:** Utilizes local storage to save user data, preventing loss when the browser is closed.
-- **Responsive Design:** It's designed to be responsive, ensuring a seamless experience across various devices and screen sizes.
-
-
-## Technologies Used
-- **Next.js:** A React framework for building server-side rendered and static web applications.
-- **Tailwind CSS:** A utility-first CSS framework for creating custom designs with ease.
-- **Redux:** A predictable state container for managing application state.
-- **React PDF:** A library for creating PDFs using React components.
-
-## Screenshots
+## 📸 Screenshots
 
 <img src="./public/screenshots/1.png" width="75%" />
 <img src="./public/screenshots/2.png" width="75%" />
 
-## Installation
-If you want to run Resumave locally, follow these steps:
+---
 
-1. Clone the repository:
+## 🚀 Instalasi Lokal
+
+1. Clone repositori:
    ```bash
-    git clone https://github.com/devxprite/resumave.git
+   git clone https://github.com/devXprite/resumave.git
+   cd resumave
    ```
 
-2. Navigate to the project directory:
-    ```bash
-    cd resumave
-    ```
-3. Install dependencies:
-    ```bash
-    npm install
-    ```
-4. Start the development server:
-    ```bash
-    npm run dev
-    ```
-5. Open your browser and visit `http://localhost:3000`
-   
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
+3. Buat file `.env.local` dan isi API key OpenRouter:
+   ```env
+   OPENROUTER_API_KEY=your_key_here
+   OPENROUTER_MODEL=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+   ```
 
-## Contributing
-Contributions are welcome! If you encounter any issues or have suggestions for improvements, please feel free to open an issue or submit a pull request.
+4. Jalankan dev server:
+   ```bash
+   npm run dev
+   ```
 
+5. Buka browser di `http://localhost:3000`
 
-## Usage
-To use Resumave, simply visit [resumave.vercel.app](https://resumave.vercel.app) and start filling out your details. Once complete, you can export your resume in PDF format.
+---
 
-## License
-This project is licensed under the MIT License. see the LICENSE file for details.
+## 📄 Lisensi
+
+MIT License — bebas digunakan dan dimodifikasi.

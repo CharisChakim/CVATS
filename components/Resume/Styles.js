@@ -1,11 +1,12 @@
 import { StyleSheet } from '@react-pdf/renderer';
+import './fonts';
 
 const normalStyles = StyleSheet.create({
     page: {
         backgroundColor: '#ffffff',
         color: '#555',
         padding: 30,
-        fontFamily: 'Times-Roman',
+        fontFamily: 'Carlito',
     },
 
     header: {
@@ -15,7 +16,8 @@ const normalStyles = StyleSheet.create({
     header__name: {
         color: '#111',
         fontSize: 20,
-        fontFamily: 'Times-Bold',
+        fontFamily: 'Carlito',
+        fontWeight: 'bold',
         textAlign: 'center',
     },
     header__links: {
@@ -46,12 +48,14 @@ const normalStyles = StyleSheet.create({
     },
 
     title: {
-        fontFamily: 'Times-Bold',
+        fontFamily: 'Carlito',
+        fontWeight: 'bold',
         marginRight: 'auto',
         color: '#555',
     },
     date: {
-        fontFamily: 'Times-Italic',
+        fontFamily: 'Carlito',
+        fontStyle: 'italic',
         fontSize: 10,
     },
 
@@ -73,7 +77,7 @@ const compactStyles = StyleSheet.create({
         backgroundColor: '#ffffff',
         color: '#555',
         padding: 20,
-        fontFamily: 'Times-Roman',
+        fontFamily: 'Carlito',
     },
 
     header: {
@@ -83,7 +87,8 @@ const compactStyles = StyleSheet.create({
     header__name: {
         color: '#111',
         fontSize: 16,
-        fontFamily: 'Times-Bold',
+        fontFamily: 'Carlito',
+        fontWeight: 'bold',
         textAlign: 'center',
     },
     header__links: {
@@ -114,12 +119,14 @@ const compactStyles = StyleSheet.create({
     },
 
     title: {
-        fontFamily: 'Times-Bold',
+        fontFamily: 'Carlito',
+        fontWeight: 'bold',
         marginRight: 'auto',
         color: '#555',
     },
     date: {
-        fontFamily: 'Times-Italic',
+        fontFamily: 'Carlito',
+        fontStyle: 'italic',
         fontSize: 8.5,
     },
 

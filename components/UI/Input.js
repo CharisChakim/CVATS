@@ -9,7 +9,7 @@ import { CgSpinner } from 'react-icons/cg';
 import { IoClose } from 'react-icons/io5';
 
 const inputClassName =
-    'block w-full rounded-md border border-gray-600 bg-gray-700/75 p-2 text-sm text-gray-100 shadow-md shadow-gray-800 outline-none focus:border-2 focus:border-primary-500 focus:bg-gray-700 md:text-base 2xl:p-2.5';
+    'block w-full rounded-md border border-gray-300 bg-white/75 p-2 text-sm text-gray-900 shadow-md shadow-gray-200 outline-none focus:border-2 focus:border-primary-500 focus:bg-white md:text-base 2xl:p-2.5 dark:border-gray-600 dark:bg-gray-700/75 dark:text-gray-100 dark:shadow-gray-800 dark:focus:bg-gray-700';
 
 const RefineButton = ({ kind, value, onRefined }) => {
     const [busy, setBusy] = useState(false);
@@ -46,7 +46,7 @@ const RefineButton = ({ kind, value, onRefined }) => {
                 onClick={click}
                 disabled={disabled}
                 title={text.length === 0 ? 'Write something first to refine' : 'Refine with AI'}
-                className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-primary-500 to-blue-500 px-2.5 py-1 text-xs font-medium text-white shadow-md transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-none disabled:bg-gray-700 disabled:text-gray-400"
+                className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-primary-500 to-blue-500 px-2.5 py-1 text-xs font-medium text-white shadow-md transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-none disabled:bg-gray-200 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
             >
                 {busy ? <CgSpinner className="animate-spin text-sm" /> : <HiSparkles className="text-sm" />}
                 <span>{busy ? 'Refining...' : 'Refine with AI'}</span>
@@ -133,10 +133,10 @@ const TagsInput = ({ name, value, onChange, max = 20, placeholder }) => {
                     onBlur={() => draft.trim() && commit(draft)}
                     placeholder={atMax ? `Max ${max} skills` : placeholder || 'Type a skill, then press Enter'}
                     disabled={atMax}
-                    className="min-w-[8rem] flex-1 bg-transparent text-sm text-gray-100 outline-none placeholder:text-gray-500 disabled:cursor-not-allowed"
+                    className="min-w-[8rem] flex-1 bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:cursor-not-allowed dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
             </div>
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 {tags.length}/{max} skills · press Enter or comma to add
             </p>
         </div>
@@ -255,7 +255,7 @@ const Input = ({ label, name, type, placeholder, options, span, value, aiRefine,
     return (
         <div className={`${span ? 'md:col-span-2' : ''}`}>
             {label && (
-                <label htmlFor={name} className="mb-0.5 block text-xs text-gray-300 md:text-sm 2xl:text-base">
+                <label htmlFor={name} className="mb-0.5 block text-xs text-gray-600 md:text-sm 2xl:text-base dark:text-gray-300">
                     {label ?? sentenceCase(name)} {props.required && '*'}
                 </label>
             )}

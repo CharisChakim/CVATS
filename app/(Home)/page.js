@@ -87,38 +87,46 @@ const page = () => {
             className={`mx-auto flex h-full min-h-[calc(100vh-5rem)] max-w-screen-xl flex-col items-center justify-center gap-8 overflow-hidden px-3 py-6 text-center lg:flex-row lg:justify-between lg:text-left ${loading ? 'pointer-events-none select-none' : ''}`}
         >
             <div className="flex flex-col items-center lg:items-start lg:w-1/2">
-                <h4 className="text-base md:text-xl text-center lg:text-left">
-                    <span className="text-gradient">A Free and Open Source Resume Builder</span>
-                </h4>
-                <h1 className="text-3xl md:mt-2 md:text-4xl 2xl:text-[2.75rem] text-center lg:text-left">
-                    <span className="text-gradient">Resume Building Made Simple</span>
+                <div className="flex flex-wrap justify-center gap-2 lg:justify-start">
+                    {['100% Gratis', 'Tanpa akun', 'Data tidak disimpan'].map(badge => (
+                        <span
+                            key={badge}
+                            className="rounded-full border border-primary-500/30 bg-primary-500/10 px-3 py-0.5 text-xs font-medium text-primary-400"
+                        >
+                            {badge}
+                        </span>
+                    ))}
+                </div>
+                <h1 className="mt-4 text-3xl md:text-4xl 2xl:text-[2.75rem] text-center lg:text-left leading-tight">
+                    <span className="text-gradient">Buat CV profesional,</span>
+                    <br />
+                    <span className="text-gradient">gratis dan aman.</span>
                 </h1>
-                <p className="mt-3 max-w-screen-sm text-sm text-gray-300 md:mt-10 md:text-lg text-center lg:text-left">
-                    Resumave is an ATS-friendly resume maker designed to simplify the process of creating professional
+                <p className="mt-4 max-w-screen-sm text-sm text-gray-600 dark:text-gray-300 md:mt-6 md:text-base text-center lg:text-left leading-relaxed">
+                    <span className="font-semibold text-primary-400">CVATS</span> membantu kamu membuat CV yang lolos ATS — tanpa biaya, tanpa daftar, dan tanpa menyimpan data apapun di server.
                     <span className="hidden md:inline">
-                        resumes without the hassle of login or sign-up. With Resumave, users can easily input their
-                        details, generate a well-formatted resume, and export it in A4 PDF format.
+                        {' '}Isi dari awal, atau upload CV lama dan biarkan AI yang mengisinya otomatis. Unduh PDF siap kirim dalam hitungan menit.
                     </span>
                 </p>
 
                 <div className="mt-8 flex flex-col items-center justify-center gap-3 md:mt-16 md:flex-row md:gap-8 lg:justify-start">
                     <Link href={'/editor'} className="btn-filled w-full md:w-auto">
-                        <span>Create My Resume</span>
+                        <span>Start Building</span>
                         <IoIosRocket />
                     </Link>
 
-                    <button 
-                        onClick={() => fileInputRef.current?.click()} 
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
                         disabled={loading}
                         className="btn w-full md:w-auto flex items-center gap-2"
                     >
-                        {loading ? 
+                        {loading ?
                             <>
                                 <span>Processing...</span>
                                 <CgSpinner className="animate-spin text-xl" />
                             </>
                         :   <>
-                                <span>Upload Resume</span>
+                                <span>Upload my CV</span>
                                 <FaCloudUploadAlt />
                             </>
                         }

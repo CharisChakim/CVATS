@@ -59,21 +59,21 @@ const PreviewModal = ({ url, onClose }) => {
             onClick={onClose}
         >
             <div
-                className="relative flex h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-gray-900 shadow-2xl"
+                className="relative flex h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-gray-900"
                 onClick={e => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between border-b border-white/10 px-4 py-2">
-                    <span className="text-sm text-gray-300">Resume preview</span>
+                <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 dark:border-white/10">
+                    <span className="text-sm text-gray-600 dark:text-gray-300">Resume preview</span>
                     <button
                         onClick={onClose}
                         aria-label="Close preview"
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-300 hover:bg-white/10"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
                     >
                         <IoClose className="text-xl" />
                     </button>
                 </div>
 
-                <div ref={containerRef} className="flex-1 overflow-auto bg-gray-800 px-4 py-4">
+                <div ref={containerRef} className="flex-1 overflow-auto bg-gray-100 px-4 py-4 dark:bg-gray-800">
                     {width > 0 && (
                         <Document
                             file={url}
@@ -126,7 +126,7 @@ const Preview = () => {
         <>
             <div ref={parentRef} className="relative w-full md:max-w-[24rem] 2xl:max-w-[28rem]">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className="text-sm text-gray-300">Template:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">Template:</span>
                     {TEMPLATES.map(t => (
                         <button
                             key={t.id}
@@ -134,7 +134,7 @@ const Preview = () => {
                             className={`rounded-md px-3 py-1 text-sm transition ${
                                 template === t.id
                                     ? 'bg-primary-400 text-black'
-                                    : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                             }`}
                         >
                             {t.label}
@@ -143,19 +143,24 @@ const Preview = () => {
                 </div>
 
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className="text-sm text-gray-300">Layout:</span>
-                    <button
-                        onClick={() => dispatch(setOnePage(!onePage))}
-                        aria-pressed={onePage}
-                        title="Apply compact preset to fit content on one page"
-                        className={`rounded-md px-3 py-1 text-sm transition ${
-                            onePage
-                                ? 'bg-primary-400 text-black'
-                                : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                        }`}
-                    >
-                        1 Page
-                    </button>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">Size:</span>
+                    {[
+                        { id: false, label: 'Normal size' },
+                        { id: true, label: 'Compact size' },
+                    ].map(opt => (
+                        <button
+                            key={String(opt.id)}
+                            onClick={() => dispatch(setOnePage(opt.id))}
+                            title={opt.id ? 'Apply compact preset to fit content on one page' : 'Use standard size'}
+                            className={`rounded-md px-3 py-1 text-sm transition ${
+                                onePage === opt.id
+                                    ? 'bg-primary-400 text-black'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
                 </div>
 
                 {instance.loading ?

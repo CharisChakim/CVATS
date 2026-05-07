@@ -12,8 +12,8 @@ module.exports = {
     theme: {
         extend: {
             colors: {
-                primary: { ...colors.teal },
-                gray: { ...colors.zinc },
+                primary: { ...colors.violet },
+                gray: { ...colors.slate },
             },
             keyframes: {
                 shimmer: {

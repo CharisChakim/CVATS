@@ -2,6 +2,7 @@
 
 import { Page, Text, View, Document, Link, StyleSheet } from '@react-pdf/renderer';
 import formatDate from '@/utils/formatDate';
+import '../fonts';
 
 const ACCENT = '#1f6feb';
 const TEXT = '#1f2933';
@@ -14,20 +15,22 @@ const buildStyles = (compact) =>
             backgroundColor: '#ffffff',
             color: TEXT,
             padding: compact ? 24 : 36,
-            fontFamily: 'Helvetica',
+            fontFamily: 'Carlito',
             fontSize: compact ? 9 : 10.5,
             lineHeight: compact ? 1.25 : 1.45,
         },
         headerName: {
             color: TEXT,
             fontSize: compact ? 18 : 24,
-            fontFamily: 'Helvetica-Bold',
+            fontFamily: 'Carlito',
+            fontWeight: 'bold',
             letterSpacing: 0.5,
         },
         headerTitle: {
             color: ACCENT,
             fontSize: compact ? 10 : 12,
-            fontFamily: 'Helvetica-Bold',
+            fontFamily: 'Carlito',
+            fontWeight: 'bold',
             marginTop: 2,
             textTransform: 'uppercase',
             letterSpacing: 1,
@@ -48,7 +51,8 @@ const buildStyles = (compact) =>
             width: 48,
         },
         sectionTitle: {
-            fontFamily: 'Helvetica-Bold',
+            fontFamily: 'Carlito',
+            fontWeight: 'bold',
             color: ACCENT,
             fontSize: compact ? 9.5 : 11,
             textTransform: 'uppercase',
@@ -69,7 +73,8 @@ const buildStyles = (compact) =>
             alignItems: 'flex-start',
         },
         itemTitle: {
-            fontFamily: 'Helvetica-Bold',
+            fontFamily: 'Carlito',
+            fontWeight: 'bold',
             fontSize: compact ? 9.5 : 11,
             color: TEXT,
         },
@@ -81,7 +86,8 @@ const buildStyles = (compact) =>
         date: {
             fontSize: compact ? 8.5 : 9.5,
             color: MUTED,
-            fontFamily: 'Helvetica-Oblique',
+            fontFamily: 'Carlito',
+            fontStyle: 'italic',
         },
         bulletRow: {
             flexDirection: 'row',
