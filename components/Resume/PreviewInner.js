@@ -4,18 +4,24 @@ import { useEffect, useRef, useState } from 'react';
 import Resume from './pdf';
 import { useDispatch, useSelector } from 'react-redux';
 import { setTemplate, setOnePage } from '@/store/slices/resumeSlice';
-import { CgSpinner } from 'react-icons/cg';
-
 import { usePDF } from '@react-pdf/renderer';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { FaDownload, FaEye } from 'react-icons/fa6';
+import { FaDownload, FaEye, FaMagnifyingGlass } from 'react-icons/fa6';
 import { IoClose } from 'react-icons/io5';
+import Link from 'next/link';
+import useTranslation from '@/hooks/useTranslation';
 
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
 const Loader = () => (
     <div className="flex min-h-96 w-full items-center justify-center">
-        <CgSpinner className="mx-auto mt-16 animate-spin text-center text-4xl text-primary-400 md:text-5xl" />
+        <div className="space-y-3 w-full px-4">
+            <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-gray-600" />
+            <div className="h-4 w-1/2 animate-pulse rounded bg-gray-200 dark:bg-gray-600" />
+            <div className="h-4 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-gray-600" />
+            <div className="mt-4 h-4 w-full animate-pulse rounded bg-gray-200 dark:bg-gray-600" />
+            <div className="h-4 w-4/5 animate-pulse rounded bg-gray-200 dark:bg-gray-600" />
+        </div>
     </div>
 );
 
@@ -24,7 +30,7 @@ const TEMPLATES = [
     { id: 'modern', label: 'Modern' },
 ];
 
-const PreviewModal = ({ url, onClose }) => {
+const PreviewModal = ({ url, onClose, t }) => {
     const containerRef = useRef(null);
     const [numPages, setNumPages] = useState(0);
     const [width, setWidth] = useState(0);
@@ -37,7 +43,6 @@ const PreviewModal = ({ url, onClose }) => {
 
         const measure = () => {
             const w = containerRef.current?.clientWidth ?? 0;
-            // 32px = horizontal padding on the inner scroll area.
             setWidth(Math.max(0, w - 32));
         };
         measure();
@@ -55,7 +60,7 @@ const PreviewModal = ({ url, onClose }) => {
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 md:p-6"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 md:p-6 backdrop-blur-sm animate-fade-in"
             onClick={onClose}
         >
             <div
@@ -63,11 +68,11 @@ const PreviewModal = ({ url, onClose }) => {
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2 dark:border-white/10">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Resume preview</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{t('preview.resumePreview')}</span>
                     <button
                         onClick={onClose}
                         aria-label="Close preview"
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10 transition-colors duration-150"
                     >
                         <IoClose className="text-xl" />
                     </button>
@@ -109,6 +114,19 @@ const Preview = () => {
     const [instance, updateInstance] = usePDF({ document });
     const [modalOpen, setModalOpen] = useState(false);
     const [mainNumPages, setMainNumPages] = useState(0);
+    const [containerWidth, setContainerWidth] = useState(0);
+    const t = useTranslation();
+
+    useEffect(() => {
+        const el = parentRef.current;
+        if (!el) return;
+        setContainerWidth(el.clientWidth);
+        const ro = new ResizeObserver(([entry]) => {
+            setContainerWidth(entry.contentRect.width);
+        });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
 
     useEffect(() => {
         if (resumeData.saved) updateInstance(document);
@@ -124,88 +142,123 @@ const Preview = () => {
 
     return (
         <>
-            <div ref={parentRef} className="relative w-full md:max-w-[24rem] 2xl:max-w-[28rem]">
+            <div ref={parentRef} className="relative w-full md:w-[24rem] 2xl:w-[28rem]">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Template:</span>
-                    {TEMPLATES.map(t => (
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{t('preview.template')}</span>
+                    {TEMPLATES.map(tmpl => (
                         <button
-                            key={t.id}
-                            onClick={() => dispatch(setTemplate(t.id))}
-                            className={`rounded-md px-3 py-1 text-sm transition ${
-                                template === t.id
+                            key={tmpl.id}
+                            onClick={() => dispatch(setTemplate(tmpl.id))}
+                            className={`rounded-md px-3 py-1 text-sm transition-all duration-150 active:scale-95 ${
+                                template === tmpl.id
                                     ? 'bg-primary-400 text-black'
                                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                             }`}
                         >
-                            {t.label}
+                            {tmpl.label}
                         </button>
                     ))}
                 </div>
 
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Size:</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{t('preview.size')}</span>
                     {[
-                        { id: false, label: 'Normal size' },
-                        { id: true, label: 'Compact size' },
+                        { id: false, labelKey: 'preview.normal' },
+                        { id: true, labelKey: 'preview.compact' },
                     ].map(opt => (
                         <button
                             key={String(opt.id)}
                             onClick={() => dispatch(setOnePage(opt.id))}
-                            title={opt.id ? 'Apply compact preset to fit content on one page' : 'Use standard size'}
-                            className={`rounded-md px-3 py-1 text-sm transition ${
+                            className={`rounded-md px-3 py-1 text-sm transition-all duration-150 active:scale-95 ${
                                 onePage === opt.id
                                     ? 'bg-primary-400 text-black'
                                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                             }`}
                         >
-                            {opt.label}
+                            {t(opt.labelKey)}
                         </button>
                     ))}
                 </div>
 
-                {instance.loading ?
-                    <Loader />
-                :   <Document
-                        loading={<Loader />}
-                        file={instance.url}
-                        onLoadSuccess={({ numPages }) => setMainNumPages(numPages)}
-                    >
-                        <Page
-                            pageNumber={1}
-                            renderTextLayer={false}
-                            renderAnnotationLayer={false}
+                <div className="overflow-hidden rounded-sm" style={{ aspectRatio: '210 / 297' }}>
+                    {instance.loading || containerWidth === 0 ? (
+                        <Loader />
+                    ) : (
+                        <Document
                             loading={<Loader />}
-                            width={parentRef.current?.clientWidth}
-                        />
-                    </Document>
-                }
+                            file={instance.url}
+                            onLoadSuccess={({ numPages }) => setMainNumPages(numPages)}
+                        >
+                            <Page
+                                pageNumber={1}
+                                renderTextLayer={false}
+                                renderAnnotationLayer={false}
+                                loading={<Loader />}
+                                width={containerWidth}
+                            />
+                        </Document>
+                    )}
+                </div>
 
                 {!instance.loading && onePage && mainNumPages > 1 && (
-                    <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                        ⚠ CV masih {mainNumPages} halaman. Coba kurangi summary, hapus bullet experience tertua, atau pangkas skills.
+                    <div className="mt-3 rounded-md border border-amber-400/60 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                        {typeof t('preview.pageWarning') === 'function'
+                            ? t('preview.pageWarning')(mainNumPages)
+                            : t('preview.pageWarning')}
                     </div>
                 )}
 
                 {!instance.loading && (
-                    <div className="mt-4 flex justify-around">
-                        <button onClick={() => setModalOpen(true)} className="btn text-sm">
-                            <span>Preview</span>
-                            <FaEye />
-                        </button>
-                        <a
-                            href={instance.url}
-                            download={`${resumeData.contact?.name || 'resume'}.pdf`}
-                            className="btn text-sm"
-                        >
-                            <span>Download</span>
-                            <FaDownload />
-                        </a>
+                    <div className="mt-4 flex flex-col gap-3">
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setModalOpen(true)}
+                                className="btn flex-1 text-sm active:scale-95 transition-transform duration-100"
+                            >
+                                <span>{t('preview.preview')}</span>
+                                <FaEye />
+                            </button>
+                            <a
+                                href={instance.url}
+                                download={`${resumeData.contact?.name || 'resume'}.pdf`}
+                                className="btn flex-1 text-sm active:scale-95 transition-transform duration-100"
+                            >
+                                <span>{t('preview.download')}</span>
+                                <FaDownload />
+                            </a>
+                        </div>
+                        {(() => {
+                            const ready = !!(
+                                resumeData.contact?.name &&
+                                resumeData.education?.length > 0 &&
+                                resumeData.experience?.length > 0 &&
+                                resumeData.skills?.items?.length > 0
+                            );
+                            return ready ? (
+                                <Link
+                                    href="/scoring"
+                                    className="btn w-full text-sm active:scale-95 transition-transform duration-100"
+                                >
+                                    <FaMagnifyingGlass />
+                                    <span>{t('hero.scoreMatchBtn')}</span>
+                                </Link>
+                            ) : (
+                                <button
+                                    disabled
+                                    title="Fill in Contact, Education, Experience and Skills first"
+                                    className="btn w-full text-sm opacity-40 cursor-not-allowed"
+                                >
+                                    <FaMagnifyingGlass />
+                                    <span>{t('hero.scoreMatchBtn')}</span>
+                                </button>
+                            );
+                        })()}
                     </div>
                 )}
             </div>
 
             {modalOpen && instance.url && (
-                <PreviewModal url={instance.url} onClose={() => setModalOpen(false)} />
+                <PreviewModal url={instance.url} onClose={() => setModalOpen(false)} t={t} />
             )}
         </>
     );

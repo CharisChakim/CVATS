@@ -3,10 +3,47 @@
 @tailwind utilities;
 
 @layer base {
+    /* Light mode primary = blue */
+    :root {
+        --color-primary-50:  239 246 255;
+        --color-primary-100: 219 234 254;
+        --color-primary-200: 191 219 254;
+        --color-primary-300: 147 197 253;
+        --color-primary-400: 96  165 250;
+        --color-primary-500: 59  130 246;
+        --color-primary-600: 37  99  235;
+        --color-primary-700: 29  78  216;
+        --color-primary-800: 30  64  175;
+        --color-primary-900: 30  58  138;
+    }
+
+    /* Dark mode primary = violet */
+    .dark {
+        --color-primary-50:  245 243 255;
+        --color-primary-100: 237 233 254;
+        --color-primary-200: 221 214 254;
+        --color-primary-300: 196 181 253;
+        --color-primary-400: 167 139 250;
+        --color-primary-500: 139 92  246;
+        --color-primary-600: 124 58  237;
+        --color-primary-700: 109 40  217;
+        --color-primary-800: 91  33  182;
+        --color-primary-900: 76  29  149;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+
     body {
         @apply bg-gray-50 text-gray-900 caret-primary-400;
         @apply dark:bg-gray-800 dark:text-gray-200;
         font-family: 'Ubuntu', sans-serif;
+    }
+
+    a,
+    button {
+        @apply transition-colors duration-150;
     }
 }
 
@@ -14,16 +51,22 @@
     .btn {
         @apply flex cursor-pointer items-center justify-center gap-3 rounded-md border border-gray-300 bg-gray-100 px-6 py-1.5 font-medium shadow-lg shadow-gray-200/25 hover:brightness-125 2xl:text-lg;
         @apply dark:border-gray-600 dark:bg-gray-700 dark:shadow-gray-900/25;
+        @apply active:scale-95 transition-transform duration-100;
 
         &-filled {
             @extend .btn;
-            @apply border-primary-500 bg-primary-400 text-gray-900 dark:bg-primary-400 dark:border-primary-500;
+            @apply border-primary-500 bg-primary-400 text-black dark:bg-primary-400 dark:border-primary-500;
         }
     }
 
     .card {
         @apply rounded-md border border-gray-200 bg-white p-4 shadow-md md:p-6 2xl:p-8;
         @apply dark:border-gray-600 dark:bg-gray-700/25 dark:shadow-xl;
+        @apply transition-shadow duration-200;
+
+        &:hover {
+            @apply shadow-lg;
+        }
     }
 }
 
@@ -35,6 +78,21 @@
     .text-gradient {
         @extend .gradient;
         @apply bg-clip-text text-transparent;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .animate-fade-in,
+        .animate-slide-up,
+        .animate-shimmer,
+        .animate-spin,
+        .animate-ping,
+        .animate-pulse {
+            animation: none !important;
+        }
+
+        * {
+            transition-duration: 0ms !important;
+        }
     }
 }
 

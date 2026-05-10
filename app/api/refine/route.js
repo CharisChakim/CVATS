@@ -4,12 +4,35 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
 
 const KIND_PROMPTS = {
-  summary:
-    "Rewrite the candidate's professional summary so it is concise (3-4 sentences), confident, ATS-friendly, and uses strong action wording. Keep it factual — do not invent skills, employers, dates, or numbers that are not present in the input.",
-  experience:
-    "Rewrite the candidate's job responsibility bullets. Output 3-6 bullet points, one per line, no leading dash or number. Each bullet must start with a strong action verb, focus on impact and quantifiable outcomes when present, and stay ATS-friendly. Do not invent metrics, employers, or dates that are not in the input.",
-  project:
-    "Rewrite the project description as 2-5 bullet points, one per line, no leading dash or number. Each bullet must lead with an action verb and highlight what was built, technologies used, and measurable impact when present. Do not invent technologies, dates, or metrics that are not in the input.",
+  summary: `Rewrite this professional summary following this exact four-part structure:
+① Role & specialization (what the person does and in what field) → ② Years of experience → ③ Core skills or key technologies → ④ A standout achievement or differentiator.
+
+Rules:
+- 2–4 sentences, ATS-friendly, confident, and specific
+- Do NOT use "I", "my", or any first-person pronouns
+- Do NOT start with "As a...", "Experienced...", or "Results-driven..."
+- Start directly with the job title or professional identity (e.g., "Software engineer with 5 years...")
+- Only use information already present in the input — do NOT invent skills, employers, years, or metrics`,
+
+  experience: `Rewrite these job responsibilities as 3–6 concise bullet points.
+
+Rules:
+- One bullet per line, no leading dash or bullet symbol (the app inserts them automatically)
+- Each bullet MUST begin with a strong past-tense action verb (e.g., Built, Led, Designed, Reduced, Improved, Automated, Delivered)
+- Structure: action verb → what was done / context or scale → outcome or impact
+- Quantify results only when the input already contains numbers — do NOT invent metrics
+- Keep each bullet under 20 words
+- Do NOT invent employers, tools, dates, or achievements not already in the input`,
+
+  project: `Rewrite this project description as 2–4 concise bullet points.
+
+Rules:
+- One bullet per line, no leading dash or bullet symbol (the app inserts them automatically)
+- Each bullet MUST begin with a strong action verb (e.g., Built, Developed, Designed, Integrated, Deployed, Implemented)
+- First bullet: what was built and which core technologies were used
+- Remaining bullets: key features, notable technical decisions, or measurable impact
+- Keep each bullet under 20 words
+- Do NOT invent technologies, metrics, or scope not already present in the input`,
 };
 
 export async function POST(req) {

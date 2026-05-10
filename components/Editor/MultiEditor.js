@@ -1,45 +1,32 @@
 'use client';
 
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import Input from '../UI/Input';
-import { useSelector } from 'react-redux';
 import { addNewIndex, deleteIndex, moveIndex, updateResumeValue } from '@/store/slices/resumeSlice';
 import ResumeFields from '@/config/ResumeFields';
 import { LuPlus } from 'react-icons/lu';
 import { useState } from 'react';
-import { FaArrowUp, FaCrop, FaMinimize, FaPencil, FaTrash } from 'react-icons/fa6';
+import { FaArrowUp, FaPencil, FaTrash } from 'react-icons/fa6';
 import { FaArrowDown } from 'react-icons/fa';
-import { TbArrowsMinimize } from "react-icons/tb";
+import { TbArrowsMinimize } from 'react-icons/tb';
+import useTranslation, { useLang } from '@/hooks/useTranslation';
+import translations from '@/lib/translations';
 
 const MultiEditor = ({ tab }) => {
     const { fields } = ResumeFields[tab];
     const [selectedCard, setSelectedCard] = useState(null);
-
     const dispatch = useDispatch();
     const resumeData = useSelector(state => state.resume[tab]);
+    const t = useTranslation();
+    const lang = useLang();
 
     const handleChange = (e, i) => {
         const { name, value } = e.target;
-
-        dispatch(
-            updateResumeValue({
-                tab,
-                name,
-                value,
-                index: i,
-            }),
-        );
+        dispatch(updateResumeValue({ tab, name, value, index: i }));
     };
 
     const addNew = () => {
-        dispatch(
-            addNewIndex({
-                tab,
-                name: 'degree',
-                value: 'new',
-            }),
-        );
-
+        dispatch(addNewIndex({ tab, name: 'degree', value: 'new' }));
         setSelectedCard(resumeData.length);
     };
 
@@ -48,16 +35,32 @@ const MultiEditor = ({ tab }) => {
         setSelectedCard(null);
     };
 
+    const localizeField = field => {
+        const fieldTrans = translations[lang]?.fields?.[tab]?.[field.name];
+        if (!fieldTrans) return field;
+        return {
+            ...field,
+            label: fieldTrans.label ?? field.label,
+            placeholder: fieldTrans.placeholder ?? field.placeholder,
+        };
+    };
+
     return (
         <div>
-            <button type="button" className="btn mb-6 ml-auto bg-gray-200/75 text-sm 2xl:text-base dark:bg-gray-600/75" onClick={addNew}>
+            <button
+                type="button"
+                className="btn mb-6 ml-auto bg-gray-200/75 text-sm 2xl:text-base dark:bg-gray-600/75 active:scale-95 transition-transform duration-100"
+                onClick={addNew}
+            >
                 <LuPlus />
-                <span>Add New</span>
+                <span>{t('editor.addNew')}</span>
             </button>
 
-            {resumeData?.length == 0 && (
+            {resumeData?.length === 0 && (
                 <div className="my-16">
-                    <p className="text-center text-gray-500">Please Add a New {tab}</p>
+                    <p className="text-center text-gray-500">
+                        {t('editor.pleaseAdd')} {t(`tabs.${tab}`).toLowerCase()}
+                    </p>
                 </div>
             )}
 
@@ -65,15 +68,17 @@ const MultiEditor = ({ tab }) => {
                 {resumeData.map((e, i) => (
                     <div
                         key={i}
-                        className="card h-full py-3 transition-all duration-1000"
-                        onClick={_ => setSelectedCard(i)}
+                        className="card h-full py-3 cursor-pointer transition-all duration-200"
+                        onClick={() => setSelectedCard(i)}
                     >
                         <h3 className="flex items-center justify-between gap-5">
-                            <span className="mr-auto text-sm md:text-base truncate ">{Object.values(e)[0] || 'Untitled'}</span>
+                            <span className="mr-auto text-sm md:text-base truncate">
+                                {Object.values(e)[0] || t('editor.untitled')}
+                            </span>
 
                             <button
-                                disabled={i == 0}
-                                className="hover:text-primary-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={i === 0}
+                                className="hover:text-primary-400 disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-100"
                                 onClick={_ => {
                                     _.stopPropagation();
                                     dispatch(moveIndex({ tab, index: i, dir: 'up' }));
@@ -83,8 +88,8 @@ const MultiEditor = ({ tab }) => {
                             </button>
 
                             <button
-                                disabled={i == resumeData.length - 1}
-                                className="hover:text-primary-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={i === resumeData.length - 1}
+                                className="hover:text-primary-400 disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-100"
                                 onClick={_ => {
                                     _.stopPropagation();
                                     dispatch(moveIndex({ tab, index: i }));
@@ -93,7 +98,7 @@ const MultiEditor = ({ tab }) => {
                                 <FaArrowDown />
                             </button>
 
-                            {selectedCard == i ?
+                            {selectedCard === i ? (
                                 <button
                                     type="button"
                                     onClick={_ => {
@@ -103,14 +108,15 @@ const MultiEditor = ({ tab }) => {
                                 >
                                     <TbArrowsMinimize />
                                 </button>
-                            :   <button type="button" className="text-primary-400">
+                            ) : (
+                                <button type="button" className="text-primary-400">
                                     <FaPencil />
                                 </button>
-                            }
+                            )}
 
                             <button
                                 type="button"
-                                className="text-red-400"
+                                className="text-red-400 transition-colors duration-100"
                                 onClick={_ => {
                                     _.stopPropagation();
                                     deleteCard(i);
@@ -120,16 +126,22 @@ const MultiEditor = ({ tab }) => {
                             </button>
                         </h3>
 
-                        {selectedCard == i && (
-                            <div className="mt-6 grid gap-4 md:grid-cols-2 md:gap-6">
-                                {fields.map(field => (
-                                    <Input
-                                        key={field.name}
-                                        {...field}
-                                        onChange={e => handleChange(e, i)}
-                                        value={resumeData[i][field.name]}
-                                    />
-                                ))}
+                        {selectedCard === i && (
+                            <div className="mt-6 grid gap-4 md:grid-cols-2 md:gap-6 animate-fade-in">
+                                {fields.map(field => {
+                                    const localized = localizeField(field);
+                                    return (
+                                        <Input
+                                            key={field.name}
+                                            {...localized}
+                                            onChange={e => handleChange(e, i)}
+                                            value={resumeData[i][field.name]}
+                                            aiRefineLabel={localized.aiRefine ? t('editor.aiRefine') : undefined}
+                                            refiningLabel={localized.aiRefine ? t('editor.refining') : undefined}
+                                            writeFirstLabel={localized.aiRefine ? t('editor.writeFirst') : undefined}
+                                        />
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

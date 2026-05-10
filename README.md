@@ -1,45 +1,29 @@
 <div align="center">
   <img src="./public/logo.svg" width="64" height="64" alt="CVATS logo" />
   <h1>CVATS</h1>
-  <p><strong>Buat CV profesional, gratis dan aman.</strong></p>
-  <p>
-    AI-powered resume builder — tanpa biaya, tanpa akun, tanpa menyimpan data apapun.
-  </p>
-  <p>
-    <a href="https://cvats.vercel.app/">🚀 Coba Sekarang</a>
-    &nbsp;·&nbsp;
-    <a href="https://github.com/devXprite/resumave/issues/new">Laporkan Bug</a>
-  </p>
+  <p><strong>Build a professional CV, free and secure.</strong></p>
+  <p>AI-powered resume builder — no cost, no account, no data stored on our servers.</p>
 </div>
 
 ---
 
-## ✨ Fitur Utama
+## ✨ Features
 
-| Fitur | Keterangan |
+| Feature | Description |
 |---|---|
-| **100% Gratis** | Semua fitur tersedia tanpa biaya apapun |
-| **Tanpa Akun** | Tidak perlu daftar atau login |
-| **Data Aman** | Data hanya tersimpan di browser kamu — tidak dikirim ke server |
-| **AI Upload CV** | Upload PDF resume lama, AI otomatis mengisi semua field |
-| **AI Refine** | Perbaiki summary, pengalaman, dan proyek dengan satu klik |
-| **ATS-Friendly** | Format CV yang lolos sistem rekrutmen otomatis (ATS) |
-| **2 Template** | Classic (tradisional) dan Modern (kontemporer) |
-| **Compact Mode** | Satu klik untuk memadatkan CV agar muat satu halaman |
-| **Skills sebagai Tag** | Input skill satu per satu, tampil rapi seperti badge |
-| **Dark / Light Mode** | Tema gelap dan terang, preferensi tersimpan otomatis |
-| **Ekspor PDF** | Unduh CV dalam format A4 PDF siap kirim |
-
----
-
-## 🛠 Teknologi
-
-- **Next.js 14** — App Router, dynamic imports, SSR-safe rendering
-- **Tailwind CSS** — Utility-first, dark mode support
-- **Redux Toolkit** — State management
-- **@react-pdf/renderer** — Generate PDF dengan font Carlito (setara Calibri)
-- **react-pdf** — Preview PDF langsung di browser
-- **OpenRouter API** — Fitur AI via model NVIDIA Nemotron
+| **100% Free** | All features available at no cost |
+| **No Account** | No sign-up or login required |
+| **Data Private** | Data lives in your browser only — nothing sent to the server |
+| **AI CV Upload** | Upload an old PDF resume and AI fills all fields automatically |
+| **AI Refine** | Polish your summary, experience, and projects with one click |
+| **ATS Match Score** | Score your CV against a job posting — paste text, URL, or screenshot |
+| **ATS-Friendly Format** | CV structure designed to pass Applicant Tracking Systems |
+| **2 Templates** | Classic (traditional) and Modern (contemporary) |
+| **Compact Mode** | One click to tighten the CV to fit a single page |
+| **Skills as Tags** | Add skills one by one, displayed neatly as badges |
+| **Dark / Light Mode** | Dark and light theme, preference saved automatically |
+| **EN / ID Language** | Full bilingual UI — English and Bahasa Indonesia |
+| **PDF Export** | Download your CV as an A4-ready PDF |
 
 ---
 
@@ -50,12 +34,25 @@
 
 ---
 
-## 🚀 Instalasi Lokal
+## 🛠 Tech Stack
 
-1. Clone repositori:
+| Layer | Technology |
+|---|---|
+| **Framework** | Next.js 14 (App Router) |
+| **Styling** | Tailwind CSS with dark mode |
+| **State** | Redux Toolkit + localStorage persistence |
+| **PDF Generate** | @react-pdf/renderer — Carlito font (Calibri equivalent) |
+| **PDF Preview** | react-pdf |
+| **AI** | OpenRouter — `google/gemma-4-31b-it:free` (fallback: Nemotron) |
+
+---
+
+## 🚀 Local Setup
+
+1. Clone the repository:
    ```bash
-   git clone https://github.com/devXprite/resumave.git
-   cd resumave
+   git clone https://github.com/CharisChakim/CVATS.git
+   cd CVATS
    ```
 
 2. Install dependencies:
@@ -63,27 +60,28 @@
    npm install
    ```
 
-3. Buat file `.env.local` dan isi API key OpenRouter:
+3. Create `.env.local` and add your OpenRouter API key:
    ```env
    OPENROUTER_API_KEY=your_key_here
-   OPENROUTER_MODEL=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
+   # Optional: override the default AI model
+   # OPENROUTER_MODEL=google/gemma-4-31b-it:free
    ```
 
-4. Jalankan dev server:
+4. Start the dev server:
    ```bash
    npm run dev
    ```
 
-5. Buka browser di `http://localhost:3000`
+5. Open `http://localhost:3000` in your browser.
 
 ---
 
 ## 🙏 Credits
 
-Proyek ini terinspirasi dari [Resumave](https://github.com/devxprite/resumave) oleh [@devxprite](https://github.com/devxprite). Terima kasih atas fondasi yang luar biasa!
+Inspired by [Resumave](https://github.com/devxprite/resumave) by [@devxprite](https://github.com/devxprite). Thank you!
 
 ---
 
-## 📄 Lisensi
+## 📄 License
 
-MIT License — bebas digunakan dan dimodifikasi.
+MIT License — free to use and modify.

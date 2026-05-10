@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { FaMoon, FaSun } from 'react-icons/fa';
+import useTranslation from '@/hooks/useTranslation';
 
 const ThemeToggle = () => {
     const [dark, setDark] = useState(true);
+    const t = useTranslation();
 
     useEffect(() => {
         setDark(document.documentElement.classList.contains('dark'));
@@ -20,11 +22,32 @@ const ThemeToggle = () => {
     return (
         <button
             onClick={toggle}
-            aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-700 transition hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600"
+            role="switch"
+            aria-checked={dark}
+            aria-label={dark ? t('theme.switchToLight') : t('theme.switchToDark')}
+            className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 rounded-full"
         >
-            {dark ? <FaSun className="text-yellow-400" /> : <FaMoon className="text-blue-400" />}
-            <span className="hidden md:inline">{dark ? 'Light' : 'Dark'}</span>
+            {/* Track — sky blue in light, indigo-dark in dark */}
+            <span
+                className={`relative inline-flex h-7 w-14 shrink-0 rounded-full transition-colors duration-300 ${
+                    dark ? 'bg-indigo-900' : 'bg-sky-300'
+                }`}
+            >
+                {/* Knob carries the icon: ☀️ left (light) → 🌙 right (dark) */}
+                <span
+                    className={`absolute top-1 flex h-5 w-5 items-center justify-center rounded-full shadow-md transition-transform duration-300 ${
+                        dark
+                            ? 'translate-x-8 bg-gray-800'
+                            : 'translate-x-1 bg-white'
+                    }`}
+                >
+                    {dark
+                        ? <FaMoon className="text-[11px] text-indigo-200" />
+                        : <FaSun className="text-[11px] text-amber-500" />
+                    }
+                </span>
+            </span>
+
         </button>
     );
 };

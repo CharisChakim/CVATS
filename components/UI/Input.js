@@ -3,24 +3,48 @@
 import { twMerge } from 'tailwind-merge';
 import { sentenceCase } from 'change-case';
 import ContentEditable from 'react-contenteditable';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { HiSparkles } from 'react-icons/hi2';
-import { CgSpinner } from 'react-icons/cg';
 import { IoClose } from 'react-icons/io5';
 
 const inputClassName =
     'block w-full rounded-md border border-gray-300 bg-white/75 p-2 text-sm text-gray-900 shadow-md shadow-gray-200 outline-none focus:border-2 focus:border-primary-500 focus:bg-white md:text-base 2xl:p-2.5 dark:border-gray-600 dark:bg-gray-700/75 dark:text-gray-100 dark:shadow-gray-800 dark:focus:bg-gray-700';
 
-const RefineButton = ({ kind, value, onRefined }) => {
+const RefineButton = ({ kind, value, onRefined, aiRefineLabel, refiningLabel, writeFirstLabel }) => {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
+    const [progress, setProgress] = useState(0);
+    const rafRef = useRef(null);
+
     const text = (value || '').toString().trim();
     const disabled = busy || text.length === 0;
+    const labelRefine = aiRefineLabel || 'Refine with AI';
+    const labelRefining = refiningLabel || 'Refining...';
+    const labelWriteFirst = writeFirstLabel || 'Write something first to refine';
+
+    // Animate progress bar toward target (slows near ceiling)
+    const animateToward = (target) => {
+        cancelAnimationFrame(rafRef.current);
+        const tick = () => {
+            setProgress(prev => {
+                if (prev >= target - 0.3) return target;
+                const delta = Math.max(0.2, (target - prev) * 0.04);
+                return prev + delta;
+            });
+            rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+    };
+
+    useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
     const click = async () => {
         if (disabled) return;
         setError('');
         setBusy(true);
+        setProgress(0);
+        animateToward(82); // crawl toward 82% while waiting for API
+
         try {
             const res = await fetch('/api/refine', {
                 method: 'POST',
@@ -29,28 +53,58 @@ const RefineButton = ({ kind, value, onRefined }) => {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to refine');
+
+            // Jump to 100%
+            cancelAnimationFrame(rafRef.current);
+            setProgress(100);
             onRefined(data.refined);
+
+            // Reset after short delay
+            setTimeout(() => {
+                setBusy(false);
+                setProgress(0);
+            }, 400);
         } catch (err) {
+            cancelAnimationFrame(rafRef.current);
+            setProgress(0);
+            setBusy(false);
             setError(err.message);
             setTimeout(() => setError(''), 4000);
-        } finally {
-            setBusy(false);
         }
     };
 
     return (
-        <div className="mt-1 flex items-center justify-end gap-2">
-            {error && <span className="text-xs text-red-400">{error}</span>}
-            <button
-                type="button"
-                onClick={click}
-                disabled={disabled}
-                title={text.length === 0 ? 'Write something first to refine' : 'Refine with AI'}
-                className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-primary-500 to-blue-500 px-2.5 py-1 text-xs font-medium text-white shadow-md transition hover:brightness-110 disabled:cursor-not-allowed disabled:bg-none disabled:bg-gray-200 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
-            >
-                {busy ? <CgSpinner className="animate-spin text-sm" /> : <HiSparkles className="text-sm" />}
-                <span>{busy ? 'Refining...' : 'Refine with AI'}</span>
-            </button>
+        <div className="mt-1.5 space-y-1">
+            {/* Progress bar — only visible while refining */}
+            {busy && (
+                <div className="h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                    <div
+                        className="h-full rounded-full bg-gradient-to-r from-primary-500 to-blue-500 transition-[width] duration-200 ease-out"
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2">
+                {error && <span className="text-xs text-red-500 dark:text-red-400">{error}</span>}
+                <button
+                    type="button"
+                    onClick={click}
+                    disabled={disabled}
+                    title={text.length === 0 ? labelWriteFirst : labelRefine}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-primary-500 to-blue-500 px-2.5 py-1 text-xs font-medium text-white shadow-md transition hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:bg-none disabled:bg-gray-200 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400"
+                >
+                    {busy
+                        ? <span className="flex gap-0.5">
+                            <span className="h-1 w-1 animate-bounce rounded-full bg-white [animation-delay:0ms]" />
+                            <span className="h-1 w-1 animate-bounce rounded-full bg-white [animation-delay:150ms]" />
+                            <span className="h-1 w-1 animate-bounce rounded-full bg-white [animation-delay:300ms]" />
+                          </span>
+                        : <HiSparkles className="text-sm" />
+                    }
+                    <span>{busy ? labelRefining : labelRefine}</span>
+                </button>
+            </div>
         </div>
     );
 };
@@ -111,14 +165,14 @@ const TagsInput = ({ name, value, onChange, max = 20, placeholder }) => {
                 {tags.map((tag, i) => (
                     <span
                         key={`${tag}-${i}`}
-                        className="inline-flex items-center gap-1 rounded-md bg-primary-500/20 px-2 py-0.5 text-xs text-primary-200"
+                        className="inline-flex items-center gap-1 rounded-md bg-primary-100 px-2 py-0.5 text-xs text-primary-700 dark:bg-primary-500/20 dark:text-primary-200"
                     >
                         {tag}
                         <button
                             type="button"
                             onClick={() => remove(i)}
                             aria-label={`Remove ${tag}`}
-                            className="text-primary-200/80 hover:text-white"
+                            className="text-primary-500 hover:text-primary-700 dark:text-primary-200/80 dark:hover:text-white"
                         >
                             <IoClose className="text-sm" />
                         </button>
@@ -143,7 +197,7 @@ const TagsInput = ({ name, value, onChange, max = 20, placeholder }) => {
     );
 };
 
-const Input = ({ label, name, type, placeholder, options, span, value, aiRefine, ...props }) => {
+const Input = ({ label, name, type, placeholder, options, span, value, aiRefine, aiRefineLabel, refiningLabel, writeFirstLabel, hint, ...props }) => {
     const inputRef = useRef(null);
 
     const triggerChange = newValue => props.onChange?.({ target: { name, value: newValue } });
@@ -184,7 +238,7 @@ const Input = ({ label, name, type, placeholder, options, span, value, aiRefine,
                     html={value && html}
                     innerRef={inputRef}
                     className={twMerge(inputClassName, 'min-h-56  text-sm md:min-h-40 md:text-sm ')}
-                    onChange={e => {
+                    onChange={_ => {
                         const text = inputRef.current.innerText;
                         props.onChange({ target: { name, value: text } });
                     }}
@@ -262,8 +316,21 @@ const Input = ({ label, name, type, placeholder, options, span, value, aiRefine,
 
             {InputEl()}
 
+            {hint && (
+                <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
+                    {hint}
+                </p>
+            )}
+
             {aiRefine && (
-                <RefineButton kind={aiRefine} value={value} onRefined={triggerChange} />
+                <RefineButton
+                    kind={aiRefine}
+                    value={value}
+                    onRefined={triggerChange}
+                    aiRefineLabel={aiRefineLabel}
+                    refiningLabel={refiningLabel}
+                    writeFirstLabel={writeFirstLabel}
+                />
             )}
         </div>
     );

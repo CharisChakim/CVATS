@@ -13,6 +13,7 @@ const defaultResume = {
     template: 'classic',
     onePage: false,
     saved: false,
+    lang: 'en',
 };
 
 const resumeSlice = createSlice({
@@ -77,6 +78,10 @@ const resumeSlice = createSlice({
         saveResume: state => {
             state.saved = true;
         },
+
+        setLang: (state, action) => {
+            state.lang = action.payload;
+        },
     },
 });
 
@@ -89,5 +94,6 @@ export const {
     setFullResume,
     setTemplate,
     setOnePage,
+    setLang,
 } = resumeSlice.actions;
 export default resumeSlice.reducer;

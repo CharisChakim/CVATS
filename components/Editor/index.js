@@ -7,10 +7,12 @@ import MultiEditor from './MultiEditor';
 import { useDispatch } from 'react-redux';
 import { saveResume } from '@/store/slices/resumeSlice';
 import { useEffect } from 'react';
+import useTranslation from '@/hooks/useTranslation';
 
 const Editor = ({ tab }) => {
     const { multiple } = ResumeFields[tab];
     const dispatch = useDispatch();
+    const t = useTranslation();
 
     const save = e => {
         e?.preventDefault();
@@ -24,12 +26,12 @@ const Editor = ({ tab }) => {
 
     return (
         <>
-            <form onSubmit={save} className="card my-8">
+            <form onSubmit={save} className="card my-8 animate-fade-in">
                 {multiple && <MultiEditor tab={tab} />}
                 {!multiple && <SingleEditor tab={tab} />}
 
-                <button type="submit" className="btn-filled ml-auto mt-6 w-full gap-2 px-6 text-center md:w-auto">
-                    <span>Save</span> <FaSave />
+                <button type="submit" className="btn-filled ml-auto mt-6 w-full gap-2 px-6 text-center md:w-auto active:scale-95">
+                    <span>{t('editor.save')}</span> <FaSave />
                 </button>
             </form>
         </>
