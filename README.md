@@ -76,12 +76,10 @@
 
 ---
 
-## 🙏 Credits
-
-Inspired by [Resumave](https://github.com/devxprite/resumave) by [@devxprite](https://github.com/devxprite). Thank you!
-
----
-
 ## 📄 License
 
 MIT License — free to use and modify.
+
+---
+
+<sub>Inspired by <a href="https://github.com/devxprite/resumave">Resumave</a> by <a href="https://github.com/devxprite">@devxprite</a>.</sub>
