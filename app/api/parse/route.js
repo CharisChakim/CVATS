@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-// Override via OPENROUTER_MODEL env var if a different Nemotron variant is wanted.
-const DEFAULT_MODEL = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
+const PARSE_MODELS = [
+  "openrouter/owl-alpha",
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+];
 
 export async function POST(req) {
   try {
@@ -17,7 +20,9 @@ export async function POST(req) {
       return NextResponse.json({ error: "API Key missing" }, { status: 500 });
     }
 
-    const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
+    const models = process.env.OPENROUTER_MODEL
+      ? [process.env.OPENROUTER_MODEL, ...PARSE_MODELS]
+      : PARSE_MODELS;
 
     const systemPrompt =
       "You extract structured data from resumes. Return ONLY a single JSON object that matches the requested schema. No prose, no markdown, no code fences.";
@@ -59,61 +64,25 @@ Resume Text:
 ${text}
 `;
 
-    const orRes = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "HTTP-Referer": process.env.OPENROUTER_REFERER || "http://localhost:3000",
-        "X-Title": "Resumave",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.1,
-        // Reasoning models (e.g. Nemotron Nano Omni reasoning) need headroom
-        // for hidden reasoning tokens before producing the final JSON.
-        max_tokens: 8000,
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (!orRes.ok) {
-      const errBody = await orRes.text();
-      console.error("OpenRouter error:", orRes.status, errBody.slice(0, 500));
-      return NextResponse.json(
-        { error: `Model request failed (${orRes.status}). ${safeErrorMessage(errBody)}` },
-        { status: 502 },
-      );
-    }
-
-    const orJson = await orRes.json();
-    const msg = orJson?.choices?.[0]?.message ?? {};
-    // Reasoning models can return null content if the budget was consumed by
-    // hidden reasoning; fall back to the reasoning trace as a last resort.
-    let resultText = msg.content ?? msg.reasoning ?? "";
-
-    if (typeof resultText !== "string") {
-      resultText = Array.isArray(resultText)
-        ? resultText.map(p => (typeof p === "string" ? p : p?.text || "")).join("")
-        : "";
-    }
-
-    resultText = resultText.replace(/```json/g, "").replace(/```/g, "").trim();
-    const firstBrace = resultText.indexOf("{");
-    const lastBrace = resultText.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace !== -1) {
-      resultText = resultText.slice(firstBrace, lastBrace + 1);
-    }
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ];
 
     let parsed;
-    try {
-      parsed = JSON.parse(resultText);
-    } catch (e) {
-      console.error("Model returned non-JSON:", resultText.slice(0, 500));
+    let lastErr;
+    for (const model of models) {
+      try {
+        parsed = await callModel(model, messages);
+        break;
+      } catch (err) {
+        console.warn(`Parse model ${model} failed:`, err.message);
+        lastErr = err;
+      }
+    }
+
+    if (!parsed) {
+      console.error("All parse models failed:", lastErr?.message);
       return NextResponse.json(
         { error: "Could not parse the resume. Please try again or fill it in manually." },
         { status: 502 },
@@ -127,6 +96,50 @@ ${text}
   }
 }
 
+async function callModel(model, messages) {
+  const orRes = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "HTTP-Referer": process.env.OPENROUTER_REFERER || "http://localhost:3000",
+      "X-Title": "CVATS",
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.1,
+      max_tokens: 8000,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!orRes.ok) {
+    const errBody = await orRes.text();
+    console.error(`Parse model ${model} error:`, orRes.status, errBody.slice(0, 300));
+    throw new Error(`Model request failed (${orRes.status}). ${safeErrorMessage(errBody)}`);
+  }
+
+  const orJson = await orRes.json();
+  const msg = orJson?.choices?.[0]?.message ?? {};
+  let resultText = msg.content ?? msg.reasoning ?? "";
+
+  if (typeof resultText !== "string") {
+    resultText = Array.isArray(resultText)
+      ? resultText.map(p => (typeof p === "string" ? p : p?.text || "")).join("")
+      : "";
+  }
+
+  resultText = resultText.replace(/```json/g, "").replace(/```/g, "").trim();
+  const firstBrace = resultText.indexOf("{");
+  const lastBrace = resultText.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    resultText = resultText.slice(firstBrace, lastBrace + 1);
+  }
+
+  return JSON.parse(resultText);
+}
+
 function safeErrorMessage(body) {
   try {
     const j = JSON.parse(body);
@@ -136,7 +149,6 @@ function safeErrorMessage(body) {
   }
 }
 
-// Map parsed model schema → app schema (resumeSlice / ResumeFields).
 function mapToAppSchema(p) {
   const c = p.contact || {};
   const contact = {

@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const TEXT_MODELS = [
-    process.env.OPENROUTER_MODEL || 'google/gemma-4-31b-it:free',
-    'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+    process.env.OPENROUTER_MODEL || 'openrouter/owl-alpha',
+    'google/gemini-2.0-flash-exp:free',
+    'meta-llama/llama-3.3-70b-instruct:free',
 ];
 const VISION_MODEL = 'meta-llama/llama-3.2-11b-vision-instruct:free';
 

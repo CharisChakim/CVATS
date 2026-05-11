@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
+const REFINE_MODELS = [
+  "openrouter/owl-alpha",
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+];
 
 const KIND_PROMPTS = {
   summary: `Rewrite this professional summary following this exact four-part structure:
@@ -54,54 +58,32 @@ export async function POST(req) {
       return NextResponse.json({ error: "API Key missing" }, { status: 500 });
     }
 
-    const model = process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
+    const models = process.env.OPENROUTER_MODEL
+      ? [process.env.OPENROUTER_MODEL, ...REFINE_MODELS]
+      : REFINE_MODELS;
+
     const systemPrompt =
       "You are a resume editor. Refine the user's text per the instructions. Return ONLY the refined text — no preamble, no markdown headers, no quotes, no commentary.";
     const userPrompt = `${KIND_PROMPTS[kind]}\n\nInput:\n${text}`;
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ];
 
-    const orRes = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "HTTP-Referer": process.env.OPENROUTER_REFERER || "http://localhost:3000",
-        "X-Title": "Resumave",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.4,
-        max_tokens: 4000,
-      }),
-    });
-
-    if (!orRes.ok) {
-      const errBody = await orRes.text();
-      console.error("OpenRouter refine error:", orRes.status, errBody.slice(0, 500));
-      return NextResponse.json(
-        { error: `Model request failed (${orRes.status}).` },
-        { status: 502 },
-      );
+    let refined;
+    let lastErr;
+    for (const model of models) {
+      try {
+        refined = await callModel(model, messages);
+        break;
+      } catch (err) {
+        console.warn(`Refine model ${model} failed:`, err.message);
+        lastErr = err;
+      }
     }
 
-    const orJson = await orRes.json();
-    const msg = orJson?.choices?.[0]?.message ?? {};
-    let refined = (msg.content ?? msg.reasoning ?? "").toString().trim();
-
-    // Strip surrounding quotes / code fences the model sometimes adds.
-    refined = refined.replace(/^```[a-z]*\s*/i, "").replace(/```\s*$/i, "");
-    refined = refined.replace(/^["'`]+|["'`]+$/g, "").trim();
-    // Strip leading bullet markers from each line so we hand back clean text.
-    refined = refined
-      .split("\n")
-      .map(line => line.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, "").trimEnd())
-      .filter(line => line.length > 0)
-      .join("\n");
-
     if (!refined) {
+      console.error("All refine models failed:", lastErr?.message);
       return NextResponse.json({ error: "Empty response from model." }, { status: 502 });
     }
 
@@ -110,4 +92,43 @@ export async function POST(req) {
     console.error("Error refining text:", error);
     return NextResponse.json({ error: error.message || "Failed to refine" }, { status: 500 });
   }
+}
+
+async function callModel(model, messages) {
+  const orRes = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "HTTP-Referer": process.env.OPENROUTER_REFERER || "http://localhost:3000",
+      "X-Title": "CVATS",
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.4,
+      max_tokens: 4000,
+    }),
+  });
+
+  if (!orRes.ok) {
+    const errBody = await orRes.text();
+    console.error(`Refine model ${model} error:`, orRes.status, errBody.slice(0, 300));
+    throw new Error(`Model request failed (${orRes.status})`);
+  }
+
+  const orJson = await orRes.json();
+  const msg = orJson?.choices?.[0]?.message ?? {};
+  let refined = (msg.content ?? msg.reasoning ?? "").toString().trim();
+
+  refined = refined.replace(/^```[a-z]*\s*/i, "").replace(/```\s*$/i, "");
+  refined = refined.replace(/^["'`]+|["'`]+$/g, "").trim();
+  refined = refined
+    .split("\n")
+    .map(line => line.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, "").trimEnd())
+    .filter(line => line.length > 0)
+    .join("\n");
+
+  if (!refined) throw new Error("Empty response from model");
+  return refined;
 }
