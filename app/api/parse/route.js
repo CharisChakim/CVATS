@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const PARSE_MODELS = [
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+
+const OPENROUTER_MODELS = [
   "openrouter/owl-alpha",
-  "google/gemini-2.0-flash-exp:free",
+  "deepseek/deepseek-chat-v3-0324:free",
   "meta-llama/llama-3.3-70b-instruct:free",
 ];
+const GEMINI_MODEL = "gemini-2.0-flash-exp";
 
 export async function POST(req) {
   try {
@@ -21,8 +24,8 @@ export async function POST(req) {
     }
 
     const models = process.env.OPENROUTER_MODEL
-      ? [process.env.OPENROUTER_MODEL, ...PARSE_MODELS]
-      : PARSE_MODELS;
+      ? [process.env.OPENROUTER_MODEL, ...OPENROUTER_MODELS]
+      : OPENROUTER_MODELS;
 
     const systemPrompt =
       "You extract structured data from resumes. Return ONLY a single JSON object that matches the requested schema. No prose, no markdown, no code fences.";
@@ -69,14 +72,26 @@ ${text}
       { role: "user", content: userPrompt },
     ];
 
+    const callOptions = { temperature: 0.1, max_tokens: 8000, json: true };
+
     let parsed;
     let lastErr;
+
     for (const model of models) {
       try {
-        parsed = await callModel(model, messages);
+        parsed = await callOpenRouter(model, messages, callOptions);
         break;
       } catch (err) {
         console.warn(`Parse model ${model} failed:`, err.message);
+        lastErr = err;
+      }
+    }
+
+    if (!parsed && process.env.GEMINI_API_KEY) {
+      try {
+        parsed = await callGemini(GEMINI_MODEL, messages, callOptions);
+      } catch (err) {
+        console.warn("Gemini parse fallback failed:", err.message);
         lastErr = err;
       }
     }
@@ -96,8 +111,8 @@ ${text}
   }
 }
 
-async function callModel(model, messages) {
-  const orRes = await fetch(OPENROUTER_URL, {
+async function callOpenRouter(model, messages, { temperature, max_tokens, json }) {
+  const res = await fetch(OPENROUTER_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -108,19 +123,47 @@ async function callModel(model, messages) {
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.1,
-      max_tokens: 8000,
-      response_format: { type: "json_object" },
+      temperature,
+      max_tokens,
+      ...(json && { response_format: { type: "json_object" } }),
     }),
   });
 
-  if (!orRes.ok) {
-    const errBody = await orRes.text();
-    console.error(`Parse model ${model} error:`, orRes.status, errBody.slice(0, 300));
-    throw new Error(`Model request failed (${orRes.status}). ${safeErrorMessage(errBody)}`);
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error(`Parse OpenRouter ${model} error:`, res.status, errBody.slice(0, 300));
+    throw new Error(`Model request failed (${res.status}). ${safeErrorMessage(errBody)}`);
   }
 
-  const orJson = await orRes.json();
+  return parseModelResponse(await res.json());
+}
+
+async function callGemini(model, messages, { temperature, max_tokens, json }) {
+  const res = await fetch(GEMINI_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.GEMINI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature,
+      max_tokens,
+      ...(json && { response_format: { type: "json_object" } }),
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error(`Parse Gemini error:`, res.status, errBody.slice(0, 300));
+    throw new Error(`Gemini request failed (${res.status})`);
+  }
+
+  return parseModelResponse(await res.json());
+}
+
+function parseModelResponse(orJson) {
   const msg = orJson?.choices?.[0]?.message ?? {};
   let resultText = msg.content ?? msg.reasoning ?? "";
 

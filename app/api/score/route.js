@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const TEXT_MODELS = [
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
+
+const OPENROUTER_TEXT_MODELS = [
     process.env.OPENROUTER_MODEL || 'openrouter/owl-alpha',
-    'google/gemini-2.0-flash-exp:free',
+    'deepseek/deepseek-chat-v3-0324:free',
     'meta-llama/llama-3.3-70b-instruct:free',
 ];
-const VISION_MODEL = 'meta-llama/llama-3.2-11b-vision-instruct:free';
+const OPENROUTER_VISION_MODEL = 'qwen/qwen2.5-vl-72b-instruct:free';
+const GEMINI_MODEL = 'gemini-2.0-flash-exp';
 
 const SYSTEM_PROMPT =
     'You are an expert ATS (Applicant Tracking System) resume analyzer. Analyze the provided resume against the job description and return a structured JSON score report. Be honest and specific. Return ONLY a valid JSON object — no prose, no markdown, no code fences.';
@@ -78,19 +81,6 @@ RESUME:
 ${cvText}`;
 }
 
-async function callWithFallback(models, messages) {
-    let lastErr;
-    for (const model of models) {
-        try {
-            return await callOpenRouter(model, messages);
-        } catch (err) {
-            console.warn(`Model ${model} failed, trying next:`, err.message);
-            lastErr = err;
-        }
-    }
-    throw lastErr;
-}
-
 async function callOpenRouter(model, messages) {
     const res = await fetch(OPENROUTER_URL, {
         method: 'POST',
@@ -115,7 +105,35 @@ async function callOpenRouter(model, messages) {
         throw new Error(`Model request failed (${res.status})`);
     }
 
-    const json = await res.json();
+    return parseScoreResponse(await res.json());
+}
+
+async function callGemini(messages) {
+    const res = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.GEMINI_API_KEY}`,
+        },
+        body: JSON.stringify({
+            model: GEMINI_MODEL,
+            messages,
+            temperature: 0.2,
+            max_tokens: 2500,
+            response_format: { type: 'json_object' },
+        }),
+    });
+
+    if (!res.ok) {
+        const errBody = await res.text();
+        console.error('Gemini score error:', res.status, errBody.slice(0, 300));
+        throw new Error(`Gemini request failed (${res.status})`);
+    }
+
+    return parseScoreResponse(await res.json());
+}
+
+function parseScoreResponse(json) {
     const msg = json?.choices?.[0]?.message ?? {};
     let text = (msg.content ?? msg.reasoning ?? '').toString();
 
@@ -125,6 +143,30 @@ async function callOpenRouter(model, messages) {
     if (first !== -1 && last !== -1) text = text.slice(first, last + 1);
 
     return JSON.parse(text);
+}
+
+async function scoreWithFallback(messages) {
+    let lastErr;
+
+    for (const model of OPENROUTER_TEXT_MODELS) {
+        try {
+            return await callOpenRouter(model, messages);
+        } catch (err) {
+            console.warn(`Score model ${model} failed, trying next:`, err.message);
+            lastErr = err;
+        }
+    }
+
+    if (process.env.GEMINI_API_KEY) {
+        try {
+            return await callGemini(messages);
+        } catch (err) {
+            console.warn('Gemini score fallback failed:', err.message);
+            lastErr = err;
+        }
+    }
+
+    throw lastErr;
 }
 
 export async function POST(req) {
@@ -146,28 +188,36 @@ export async function POST(req) {
         let result;
 
         if (jobImageBase64) {
-            // Vision path: job posting is a screenshot image
             const messages = [
                 { role: 'system', content: SYSTEM_PROMPT },
                 {
                     role: 'user',
                     content: [
-                        {
-                            type: 'text',
-                            text: buildVisionPrompt(cvText),
-                        },
-                        {
-                            type: 'image_url',
-                            image_url: {
-                                url: jobImageBase64,
-                            },
-                        },
+                        { type: 'text', text: buildVisionPrompt(cvText) },
+                        { type: 'image_url', image_url: { url: jobImageBase64 } },
                     ],
                 },
             ];
-            result = await callOpenRouter(VISION_MODEL, messages);
+
+            let lastErr;
+            try {
+                result = await callOpenRouter(OPENROUTER_VISION_MODEL, messages);
+            } catch (err) {
+                console.warn(`Vision model ${OPENROUTER_VISION_MODEL} failed:`, err.message);
+                lastErr = err;
+
+                if (process.env.GEMINI_API_KEY) {
+                    try {
+                        result = await callGemini(messages);
+                    } catch (geminiErr) {
+                        console.warn('Gemini vision fallback failed:', geminiErr.message);
+                        lastErr = geminiErr;
+                    }
+                }
+            }
+
+            if (!result) throw lastErr;
         } else {
-            // Text path: job posting is plain text
             if (!jobText || jobText.trim().length < 50) {
                 return NextResponse.json(
                     { error: 'Job description is too short. Please provide more details.' },
@@ -178,10 +228,9 @@ export async function POST(req) {
                 { role: 'system', content: SYSTEM_PROMPT },
                 { role: 'user', content: buildTextPrompt(cvText.slice(0, 6000), jobText.slice(0, 6000)) },
             ];
-            result = await callWithFallback(TEXT_MODELS, messages);
+            result = await scoreWithFallback(messages);
         }
 
-        // Validate and normalize the result
         if (typeof result.overallScore !== 'number') {
             throw new Error('Invalid score format from AI');
         }

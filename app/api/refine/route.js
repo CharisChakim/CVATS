@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const REFINE_MODELS = [
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+
+const OPENROUTER_MODELS = [
   "openrouter/owl-alpha",
-  "google/gemini-2.0-flash-exp:free",
+  "deepseek/deepseek-chat-v3-0324:free",
   "meta-llama/llama-3.3-70b-instruct:free",
 ];
+const GEMINI_MODEL = "gemini-2.0-flash-exp";
 
 const KIND_PROMPTS = {
   summary: `Rewrite this professional summary following this exact four-part structure:
@@ -59,8 +62,8 @@ export async function POST(req) {
     }
 
     const models = process.env.OPENROUTER_MODEL
-      ? [process.env.OPENROUTER_MODEL, ...REFINE_MODELS]
-      : REFINE_MODELS;
+      ? [process.env.OPENROUTER_MODEL, ...OPENROUTER_MODELS]
+      : OPENROUTER_MODELS;
 
     const systemPrompt =
       "You are a resume editor. Refine the user's text per the instructions. Return ONLY the refined text — no preamble, no markdown headers, no quotes, no commentary.";
@@ -70,14 +73,26 @@ export async function POST(req) {
       { role: "user", content: userPrompt },
     ];
 
+    const callOptions = { temperature: 0.4, max_tokens: 4000 };
+
     let refined;
     let lastErr;
+
     for (const model of models) {
       try {
-        refined = await callModel(model, messages);
+        refined = await callOpenRouter(model, messages, callOptions);
         break;
       } catch (err) {
         console.warn(`Refine model ${model} failed:`, err.message);
+        lastErr = err;
+      }
+    }
+
+    if (!refined && process.env.GEMINI_API_KEY) {
+      try {
+        refined = await callGemini(GEMINI_MODEL, messages, callOptions);
+      } catch (err) {
+        console.warn("Gemini refine fallback failed:", err.message);
         lastErr = err;
       }
     }
@@ -94,8 +109,8 @@ export async function POST(req) {
   }
 }
 
-async function callModel(model, messages) {
-  const orRes = await fetch(OPENROUTER_URL, {
+async function callOpenRouter(model, messages, { temperature, max_tokens }) {
+  const res = await fetch(OPENROUTER_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -103,21 +118,38 @@ async function callModel(model, messages) {
       "HTTP-Referer": process.env.OPENROUTER_REFERER || "http://localhost:3000",
       "X-Title": "CVATS",
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.4,
-      max_tokens: 4000,
-    }),
+    body: JSON.stringify({ model, messages, temperature, max_tokens }),
   });
 
-  if (!orRes.ok) {
-    const errBody = await orRes.text();
-    console.error(`Refine model ${model} error:`, orRes.status, errBody.slice(0, 300));
-    throw new Error(`Model request failed (${orRes.status})`);
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error(`Refine OpenRouter ${model} error:`, res.status, errBody.slice(0, 300));
+    throw new Error(`Model request failed (${res.status})`);
   }
 
-  const orJson = await orRes.json();
+  return parseRefinedText(await res.json());
+}
+
+async function callGemini(model, messages, { temperature, max_tokens }) {
+  const res = await fetch(GEMINI_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.GEMINI_API_KEY}`,
+    },
+    body: JSON.stringify({ model, messages, temperature, max_tokens }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error(`Refine Gemini error:`, res.status, errBody.slice(0, 300));
+    throw new Error(`Gemini request failed (${res.status})`);
+  }
+
+  return parseRefinedText(await res.json());
+}
+
+function parseRefinedText(orJson) {
   const msg = orJson?.choices?.[0]?.message ?? {};
   let refined = (msg.content ?? msg.reasoning ?? "").toString().trim();
 
