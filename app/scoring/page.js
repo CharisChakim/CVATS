@@ -206,7 +206,14 @@ const ScoringPage = () => {
                 body: JSON.stringify(body),
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Scoring failed');
+            if (!res.ok) {
+                if (data.code === 'QUOTA_EXHAUSTED') {
+                    setError(t('scoring.quotaError'));
+                    setStep(2);
+                    return;
+                }
+                throw new Error(data.error || 'Scoring failed');
+            }
 
             if (jobData.type === 'text') {
                 cacheSet(['score', cvText.slice(0, 300), jobData.value.slice(0, 300)], data);

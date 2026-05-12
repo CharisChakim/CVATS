@@ -98,6 +98,12 @@ export async function POST(req) {
       });
     } catch (err) {
       console.error('Score route: all providers failed:', err.message);
+      if (err.code === 'QUOTA_EXHAUSTED' || err.message?.startsWith('QUOTA_EXHAUSTED')) {
+        return NextResponse.json(
+          { error: 'All free AI quota limits have been reached. Please try again later.', code: 'QUOTA_EXHAUSTED' },
+          { status: 429 },
+        );
+      }
       return NextResponse.json({ error: err.message || 'Failed to score resume' }, { status: 502 });
     }
 
