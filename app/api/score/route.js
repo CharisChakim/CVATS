@@ -95,6 +95,9 @@ export async function POST(req) {
         temperature: 0.2,
         max_tokens: 1500,
         response_format: { type: 'json_object' },
+        validateFn: text => {
+          try { extractJson(text); return null; } catch (e) { return e.message; }
+        },
       });
     } catch (err) {
       console.error('Score route: all providers failed:', err.message);
