@@ -1,197 +1,109 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { callAI, extractJson } from '@/lib/callAI';
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const PARSE_MODELS = [
-  "openrouter/owl-alpha",
-  "google/gemma-4-31b-it:free",
-  "deepseek/deepseek-chat-v3-0324:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
+const OPENROUTER_MODELS = [
+  'openai/gpt-oss-120b:free',
+  'google/gemma-4-31b-it:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'openai/gpt-oss-20b:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
 ];
+const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 
 export async function POST(req) {
   try {
     const { text } = await req.json();
 
-    if (!text || text.trim().length === 0) {
-      return NextResponse.json({ error: "No text provided" }, { status: 400 });
+    if (!text?.trim()) {
+      return NextResponse.json({ error: 'No text provided' }, { status: 400 });
+    }
+    if (!process.env.OPENROUTER_API_KEY && !process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
+      return NextResponse.json({ error: 'No AI provider configured' }, { status: 500 });
     }
 
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.error("OPENROUTER_API_KEY is not set");
-      return NextResponse.json({ error: "API Key missing" }, { status: 500 });
-    }
-
-    const models = process.env.OPENROUTER_MODEL
-      ? [process.env.OPENROUTER_MODEL, ...PARSE_MODELS]
-      : PARSE_MODELS;
-
-    const systemPrompt =
-      "You extract structured data from resumes. Return ONLY a single JSON object that matches the requested schema. No prose, no markdown, no code fences.";
-
-    const userPrompt = `
-Extract the following information from the resume text and format it as a valid JSON object.
-The JSON object MUST match this structure exactly:
-{
-  "contact": {
-    "name": "",
-    "email": "",
-    "phone": "",
-    "location": "",
-    "designation": "",
-    "website": "",
-    "linkedin": ""
-  },
-  "summary": { "content": "" },
-  "education": [
-    { "institution": "", "degree": "", "startDate": "", "endDate": "", "location": "" }
-  ],
-  "experience": [
-    { "company": "", "role": "", "startDate": "", "endDate": "", "location": "", "content": "" }
-  ],
-  "projects": [
-    { "name": "", "role": "", "startDate": "", "endDate": "", "link": "", "content": "" }
-  ],
-  "skills": { "content": "" },
-  "certificates": [ { "name": "", "issuer": "", "date": "" } ],
-  "languages": [ { "name": "", "level": "" } ]
-}
-
-Rules:
-- If a field is not found, use "" for strings or [] for arrays.
-- For experience and projects, "content" should be one bullet point per line, separated by '\\n'.
-- Return ONLY the JSON object — no markdown, no commentary.
-
-Resume Text:
-${text}
-`;
+    const trimmedText = text.slice(0, 6000);
 
     const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
+      {
+        role: 'system',
+        content: 'You extract structured data from resumes. Return ONLY a valid JSON object — no prose, no markdown, no code fences.',
+      },
+      {
+        role: 'user',
+        content: `Extract this resume into exactly this JSON schema ("" for missing strings, [] for missing arrays). For experience/projects, "content" = newline-separated bullet points.\n\nSchema: {"contact":{"name":"","email":"","phone":"","location":"","designation":"","website":"","linkedin":""},"summary":{"content":""},"education":[{"institution":"","degree":"","startDate":"","endDate":"","location":""}],"experience":[{"company":"","role":"","startDate":"","endDate":"","location":"","content":""}],"projects":[{"name":"","role":"","startDate":"","endDate":"","link":"","content":""}],"skills":{"content":""},"certificates":[{"name":"","issuer":"","date":""}],"languages":[{"name":"","level":""}]}\n\nResume:\n${trimmedText}`,
+      },
     ];
 
-    let parsed;
-    let lastErr;
-    for (const model of models) {
-      try {
-        parsed = await callModel(model, messages);
-        break;
-      } catch (err) {
-        console.warn(`Parse model ${model} failed:`, err.message);
-        lastErr = err;
-      }
-    }
-
-    if (!parsed) {
-      console.error("All parse models failed:", lastErr?.message);
+    let resultText;
+    try {
+      resultText = await callAI(messages, {
+        openrouterModels: process.env.OPENROUTER_MODEL
+          ? [process.env.OPENROUTER_MODEL, ...OPENROUTER_MODELS]
+          : OPENROUTER_MODELS,
+        groqModels: GROQ_MODELS,
+        geminiModels: GEMINI_MODELS,
+        temperature: 0.1,
+        max_tokens: 4000,
+        response_format: { type: 'json_object' },
+      });
+    } catch {
       return NextResponse.json(
-        { error: "Could not parse the resume. Please try again or fill it in manually." },
+        { error: 'Could not parse the resume. Please try again or fill it in manually.' },
         { status: 502 },
       );
     }
 
+    const parsed = extractJson(resultText);
     return NextResponse.json(mapToAppSchema(parsed));
   } catch (error) {
-    console.error("Error parsing resume:", error);
-    return NextResponse.json({ error: error.message || "Failed to parse resume" }, { status: 500 });
-  }
-}
-
-async function callModel(model, messages) {
-  const res = await fetch(OPENROUTER_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "HTTP-Referer": process.env.OPENROUTER_REFERER || "http://localhost:3000",
-      "X-Title": "CVATS",
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.1,
-      max_tokens: 8000,
-      response_format: { type: "json_object" },
-    }),
-  });
-
-  if (!res.ok) {
-    const errBody = await res.text();
-    console.error(`Parse model ${model} error:`, res.status, errBody.slice(0, 300));
-    throw new Error(`Model request failed (${res.status}). ${safeErrorMessage(errBody)}`);
-  }
-
-  const orJson = await res.json();
-  const msg = orJson?.choices?.[0]?.message ?? {};
-  let resultText = msg.content ?? msg.reasoning ?? "";
-
-  if (typeof resultText !== "string") {
-    resultText = Array.isArray(resultText)
-      ? resultText.map(p => (typeof p === "string" ? p : p?.text || "")).join("")
-      : "";
-  }
-
-  resultText = resultText.replace(/```json/g, "").replace(/```/g, "").trim();
-  const firstBrace = resultText.indexOf("{");
-  const lastBrace = resultText.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    resultText = resultText.slice(firstBrace, lastBrace + 1);
-  }
-
-  return JSON.parse(resultText);
-}
-
-function safeErrorMessage(body) {
-  try {
-    const j = JSON.parse(body);
-    return j?.error?.message || j?.message || "";
-  } catch {
-    return "";
+    console.error('Error parsing resume:', error);
+    return NextResponse.json({ error: error.message || 'Failed to parse resume' }, { status: 500 });
   }
 }
 
 function mapToAppSchema(p) {
   const c = p.contact || {};
   const contact = {
-    name: c.name || "",
-    title: c.designation || "",
-    email: c.email || "",
-    phone: c.phone || "",
-    address: c.location || "",
-    linkedin: c.linkedin || "",
-    github: "",
-    blogs: "",
-    twitter: "",
-    portfolio: c.website || "",
+    name: c.name || '',
+    title: c.designation || '',
+    email: c.email || '',
+    phone: c.phone || '',
+    address: c.location || '',
+    linkedin: c.linkedin || '',
+    github: '',
+    blogs: '',
+    twitter: '',
+    portfolio: c.website || '',
   };
 
-  const summary = { summary: p.summary?.content || "" };
+  const summary = { summary: p.summary?.content || '' };
 
   const education = (p.education || []).map(e => ({
-    degree: e.degree || "",
-    institution: e.institution || "",
-    start: e.startDate || "",
-    end: e.endDate || "",
-    location: e.location || "",
-    gpa: "",
+    degree: e.degree || '',
+    institution: e.institution || '',
+    start: e.startDate || '',
+    end: e.endDate || '',
+    location: e.location || '',
+    gpa: '',
   }));
 
   const experience = (p.experience || []).map(e => ({
-    role: e.role || "",
-    company: e.company || "",
-    location: e.location || "",
-    start: e.startDate || "",
-    end: e.endDate || "",
-    description: e.content || "",
+    role: e.role || '',
+    company: e.company || '',
+    location: e.location || '',
+    start: e.startDate || '',
+    end: e.endDate || '',
+    description: e.content || '',
   }));
 
   const projects = (p.projects || []).map(pr => ({
-    title: pr.name || "",
-    url: pr.link || "",
-    description: pr.content || "",
+    title: pr.name || '',
+    url: pr.link || '',
+    description: pr.content || '',
   }));
 
-  const skillItems = (p.skills?.content || "")
+  const skillItems = (p.skills?.content || '')
     .split(/[\n,;|·•]+/)
     .map(s => s.trim())
     .filter(Boolean);
@@ -204,18 +116,17 @@ function mapToAppSchema(p) {
     dedup.push(s);
     if (dedup.length >= 20) break;
   }
-  const skills = { items: dedup };
 
   const certificates = (p.certificates || []).map(ct => ({
-    title: ct.name || "",
-    issuer: ct.issuer || "",
-    date: ct.date || "",
+    title: ct.name || '',
+    issuer: ct.issuer || '',
+    date: ct.date || '',
   }));
 
   const languages = (p.languages || []).map(l => ({
-    language: l.name || "",
-    proficiency: l.level || "",
+    language: l.name || '',
+    proficiency: l.level || '',
   }));
 
-  return { contact, summary, education, experience, projects, skills, certificates, languages };
+  return { contact, summary, education, experience, projects, skills: { items: dedup }, certificates, languages };
 }

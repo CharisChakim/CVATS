@@ -6,6 +6,7 @@ import ContentEditable from 'react-contenteditable';
 import { useRef, useState, useEffect } from 'react';
 import { HiSparkles } from 'react-icons/hi2';
 import { IoClose } from 'react-icons/io5';
+import { cacheGet, cacheSet } from '@/utils/aiCache';
 
 const inputClassName =
     'block w-full rounded-md border border-gray-300 bg-white/75 p-2 text-sm text-gray-900 shadow-md shadow-gray-200 outline-none focus:border-2 focus:border-primary-500 focus:bg-white md:text-base 2xl:p-2.5 dark:border-gray-600 dark:bg-gray-700/75 dark:text-gray-100 dark:shadow-gray-800 dark:focus:bg-gray-700';
@@ -41,6 +42,13 @@ const RefineButton = ({ kind, value, onRefined, aiRefineLabel, refiningLabel, wr
     const click = async () => {
         if (disabled) return;
         setError('');
+
+        const cached = cacheGet(['refine', kind, text]);
+        if (cached) {
+            onRefined(cached);
+            return;
+        }
+
         setBusy(true);
         setProgress(0);
         animateToward(82); // crawl toward 82% while waiting for API
@@ -53,6 +61,8 @@ const RefineButton = ({ kind, value, onRefined, aiRefineLabel, refiningLabel, wr
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to refine');
+
+            cacheSet(['refine', kind, text], data.refined);
 
             // Jump to 100%
             cancelAnimationFrame(rafRef.current);

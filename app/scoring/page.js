@@ -9,6 +9,8 @@ import { FaMagnifyingGlass, FaFileLines, FaBriefcase, FaListCheck, FaChartSimple
 import { CgSpinner } from 'react-icons/cg';
 import useTranslation from '@/hooks/useTranslation';
 import { serializeCv } from '@/utils/serializeCv';
+import { cleanPdfText } from '@/utils/cleanPdfText';
+import { cacheGet, cacheSet } from '@/utils/aiCache';
 import JobInput from '@/components/Scoring/JobInput';
 import ScoreResults from '@/components/Scoring/ScoreResults';
 
@@ -151,7 +153,8 @@ const ScoringPage = () => {
         setExtractingPdf(true);
         setError('');
         try {
-            const text = await extractTextFromPDF(file);
+            const rawText = await extractTextFromPDF(file);
+            const text = cleanPdfText(rawText, 6000);
             if (!text || text.trim().length < 50) {
                 throw new Error('Could not extract text from this PDF. Is it a scanned image?');
             }
@@ -178,6 +181,17 @@ const ScoringPage = () => {
         }
 
         setError('');
+
+        // Return cached result instantly for text-based scoring
+        if (jobData.type === 'text') {
+            const cached = cacheGet(['score', cvText.slice(0, 300), jobData.value.slice(0, 300)]);
+            if (cached) {
+                setResults(cached);
+                setStep(4);
+                return;
+            }
+        }
+
         setStep(3);
 
         try {
@@ -193,6 +207,11 @@ const ScoringPage = () => {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Scoring failed');
+
+            if (jobData.type === 'text') {
+                cacheSet(['score', cvText.slice(0, 300), jobData.value.slice(0, 300)], data);
+            }
+
             setResults(data);
             setStep(4);
         } catch (err) {

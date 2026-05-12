@@ -1,12 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { callAI } from '@/lib/callAI';
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const REFINE_MODELS = [
-  "openrouter/owl-alpha",
-  "google/gemma-4-31b-it:free",
-  "deepseek/deepseek-chat-v3-0324:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
+const OPENROUTER_MODELS = [
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'openai/gpt-oss-120b:free',
+  'google/gemma-4-31b-it:free',
+  'openai/gpt-oss-20b:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
 ];
+const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 
 const KIND_PROMPTS = {
   summary: `Rewrite this professional summary following this exact four-part structure:
@@ -43,88 +46,52 @@ Rules:
 export async function POST(req) {
   try {
     const body = await req.json();
-    const text = (body?.text || "").toString().trim();
+    const text = (body?.text || '').toString().trim();
     const kind = body?.kind;
 
-    if (!text) {
-      return NextResponse.json({ error: "Nothing to refine — write something first." }, { status: 400 });
-    }
-    if (text.length > 4000) {
-      return NextResponse.json({ error: "Text too long to refine." }, { status: 413 });
-    }
-    if (!KIND_PROMPTS[kind]) {
-      return NextResponse.json({ error: "Unknown refine kind." }, { status: 400 });
-    }
-    if (!process.env.OPENROUTER_API_KEY) {
-      return NextResponse.json({ error: "API Key missing" }, { status: 500 });
+    if (!text) return NextResponse.json({ error: 'Nothing to refine — write something first.' }, { status: 400 });
+    if (text.length > 4000) return NextResponse.json({ error: 'Text too long to refine.' }, { status: 413 });
+    if (!KIND_PROMPTS[kind]) return NextResponse.json({ error: 'Unknown refine kind.' }, { status: 400 });
+    if (!process.env.OPENROUTER_API_KEY && !process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
+      return NextResponse.json({ error: 'No AI provider configured' }, { status: 500 });
     }
 
-    const models = process.env.OPENROUTER_MODEL
-      ? [process.env.OPENROUTER_MODEL, ...REFINE_MODELS]
-      : REFINE_MODELS;
-
-    const systemPrompt =
-      "You are a resume editor. Refine the user's text per the instructions. Return ONLY the refined text — no preamble, no markdown headers, no quotes, no commentary.";
-    const userPrompt = `${KIND_PROMPTS[kind]}\n\nInput:\n${text}`;
     const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
+      {
+        role: 'system',
+        content: 'You are a resume editor. Refine the user\'s text per the instructions. Return ONLY the refined text — no preamble, no markdown headers, no quotes, no commentary.',
+      },
+      { role: 'user', content: `${KIND_PROMPTS[kind]}\n\nInput:\n${text}` },
     ];
 
     let refined;
-    let lastErr;
-    for (const model of models) {
-      try {
-        refined = await callModel(model, messages);
-        break;
-      } catch (err) {
-        console.warn(`Refine model ${model} failed:`, err.message);
-        lastErr = err;
-      }
+    try {
+      refined = await callAI(messages, {
+        openrouterModels: process.env.OPENROUTER_MODEL
+          ? [process.env.OPENROUTER_MODEL, ...OPENROUTER_MODELS]
+          : OPENROUTER_MODELS,
+        groqModels: GROQ_MODELS,
+        geminiModels: GEMINI_MODELS,
+        temperature: 0.4,
+        max_tokens: 600,
+      });
+    } catch {
+      return NextResponse.json({ error: 'Empty response from model.' }, { status: 502 });
     }
 
-    if (!refined) {
-      console.error("All refine models failed:", lastErr?.message);
-      return NextResponse.json({ error: "Empty response from model." }, { status: 502 });
-    }
+    refined = refined.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/i, '');
+    refined = refined.replace(/^["'`]+|["'`]+$/g, '').trim();
+    refined = refined
+      .split('\n')
+      .map(line => line.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trimEnd())
+      .filter(line => line.length > 0)
+      .join('\n');
+
+    if (!refined) return NextResponse.json({ error: 'Empty response from model.' }, { status: 502 });
 
     return NextResponse.json({ refined });
   } catch (error) {
-    console.error("Error refining text:", error);
-    return NextResponse.json({ error: error.message || "Failed to refine" }, { status: 500 });
+    console.error('Error refining text:', error);
+    return NextResponse.json({ error: error.message || 'Failed to refine' }, { status: 500 });
   }
-}
-
-async function callModel(model, messages) {
-  const res = await fetch(OPENROUTER_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      "HTTP-Referer": process.env.OPENROUTER_REFERER || "http://localhost:3000",
-      "X-Title": "CVATS",
-    },
-    body: JSON.stringify({ model, messages, temperature: 0.4, max_tokens: 4000 }),
-  });
-
-  if (!res.ok) {
-    const errBody = await res.text();
-    console.error(`Refine model ${model} error:`, res.status, errBody.slice(0, 300));
-    throw new Error(`Model request failed (${res.status})`);
-  }
-
-  const orJson = await res.json();
-  const msg = orJson?.choices?.[0]?.message ?? {};
-  let refined = (msg.content ?? msg.reasoning ?? "").toString().trim();
-
-  refined = refined.replace(/^```[a-z]*\s*/i, "").replace(/```\s*$/i, "");
-  refined = refined.replace(/^["'`]+|["'`]+$/g, "").trim();
-  refined = refined
-    .split("\n")
-    .map(line => line.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, "").trimEnd())
-    .filter(line => line.length > 0)
-    .join("\n");
-
-  if (!refined) throw new Error("Empty response from model");
-  return refined;
 }

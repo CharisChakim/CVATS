@@ -12,6 +12,7 @@ import { pdfjs } from 'react-pdf';
 import { CgSpinner } from 'react-icons/cg';
 import UploadProgress from '@/components/UploadProgress';
 import useTranslation from '@/hooks/useTranslation';
+import { cleanPdfText } from '@/utils/cleanPdfText';
 
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
@@ -79,7 +80,8 @@ const page = () => {
         setStage('read');
         setLoading(true);
         try {
-            const text = await extractTextFromPDF(file);
+            const rawText = await extractTextFromPDF(file);
+            const text = cleanPdfText(rawText);
 
             if (!text || text.trim().length === 0) {
                 throw new Error('Could not extract any text from the PDF. Is it a scanned image?');
